@@ -1,0 +1,34 @@
+# ---------------------------------------------------------------------------
+# Kronos View - live chart terminal dependencies
+# ---------------------------------------------------------------------------
+# Windows:  py -m venv .venv
+#           .venv\Scripts\python.exe -m pip install -r requirements.txt
+#           .venv\Scripts\python.exe server.py
+#
+# The NVIDIA Kronos model repo (github.com/shiyu-coder/Kronos) is imported at
+# runtime - clone it next to this folder (or set KRONOS_REPO_DIR).
+# ---------------------------------------------------------------------------
+
+# --- Server -----------------------------------------------------------------
+fastapi>=0.115          # REST API framework
+uvicorn>=0.34           # ASGI server
+pandas>=2.2.2
+numpy>=1.26
+pydantic>=2.0
+
+# --- Angel One SmartAPI (8_smartapi_auth.py, 9_smartapi_fetch.py, 10_smartapi_live.py)
+smartapi-python>=1.4.8  # official Angel One SDK
+pyotp>=2.10             # TOTP generation for the daily 2FA login
+logzero>=1.7            # smartapi-python dependency
+websocket-client>=1.8   # SmartWebSocketV2 dependency
+
+# --- Kronos GPU inference (2_kronos_inference.py) ----------------------------
+# Windows: plain `pip install torch` pulls the CPU wheel - NOT usable. Install
+# the CUDA build instead:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+torch>=2.9
+huggingface_hub==0.33.1 # pinned by the Kronos repo
+einops==0.8.1
+safetensors>=0.6.2
+tqdm>=4.67.1
+matplotlib>=3.9.0       # Kronos repo dependency

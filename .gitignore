@@ -1,0 +1,46 @@
+# Secrets - NEVER commit these
+smartapi_config.json
+smartapi_tokens.json
+*.secret
+.env
+
+# Vendored upstream repo (clone it yourself, see README)
+Kronos/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Local data + logs
+*.csv
+*.log
+*.db
+*.db-shm
+*.db-wal
+logs/
+history/
+streamlit.log
+dashboard.log
+dashboard80.log
+
+# Runtime state (regenerated on use, not source)
+live_ai_tracker.json
+predictions_archive.json
+live_watchlist.json
+tv_watchlist.json
+tv_alerts.json
+
+# Test / scratch artefacts
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+_tv_test.html
+
+# OS
+.DS_Store
+Thumbs.db

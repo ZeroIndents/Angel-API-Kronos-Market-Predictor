@@ -1,0 +1,33 @@
+# ---------------------------------------------------------------------------
+# Kronos platform — lint + test configuration
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+addopts = "-q"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = [
+    "Kronos",            # vendored upstream repo - not ours to lint
+    ".venv",
+    "static",
+]
+
+[tool.ruff.lint]
+# E/F/W = pycodestyle/pyflakes basics, I = import sorting, UP = pyupgrade,
+# B = bugbear (common bugs). E501 is left off: this codebase intentionally
+# uses long descriptive help strings and comments.
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    "E501",   # long lines are a style choice here
+    "B008",   # function calls in default args (Pydantic Field(...))
+]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_ignores = true
+exclude = ["Kronos/", ".venv/"]

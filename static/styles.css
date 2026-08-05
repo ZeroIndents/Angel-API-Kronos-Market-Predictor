@@ -1,0 +1,1053 @@
+/* ==========================================================================
+   Kronos View — Chart Viewer
+   Classic TradingView dark theme:
+     background  #131722   panel #1e222d   borders #2a2e39
+     text        #d1d4dc   muted #787b86   accent #2962ff
+     up candles  #089981   down candles #f23645
+   ========================================================================== */
+
+:root {
+  --tv-bg: #131722;
+  --tv-panel: #1e222d;
+  --tv-panel2: #2a2e39;
+  --tv-border: #2a2e39;
+  --tv-text: #d1d4dc;
+  --tv-muted: #787b86;
+  --tv-accent: #2962ff;
+  --tv-up: #089981;
+  --tv-down: #f23645;
+  --tv-predict: #ffb74d;
+  --tv-hover: rgba(41, 98, 255, 0.15);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--tv-bg);
+  color: var(--tv-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+}
+
+/* Glass-fusion ambience behind everything: aurora gradients + vignette. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 500px at 8% -10%, rgba(124, 77, 255, 0.16), transparent 60%),
+    radial-gradient(700px 460px at 96% -12%, rgba(41, 98, 255, 0.18), transparent 62%),
+    radial-gradient(1000px 600px at 50% 118%, rgba(0, 153, 129, 0.10), transparent 60%),
+    radial-gradient(600px 380px at 80% 60%, rgba(255, 183, 77, 0.05), transparent 60%);
+}
+
+/* ----------------------------- toolbar ---------------------------------- */
+.tv-toolbar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding: 0 10px;
+  background: rgba(30, 34, 45, 0.62);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom: 1px solid rgba(122, 132, 153, 0.25);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
+  user-select: none;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tv-toolbar::-webkit-scrollbar { display: none; }
+
+
+.tv-sep { width: 1px; height: 22px; background: var(--tv-border); flex: none; }
+.tv-spacer { flex: 1; }
+
+.tv-group { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; }
+.tv-label {
+  font-size: 9px;
+  letter-spacing: 0.9px;
+  color: var(--tv-muted);
+  text-transform: uppercase;
+}
+
+.tv-btnrow { display: flex; gap: 2px; }
+
+.tv-btn {
+  background: transparent;
+  color: var(--tv-text);
+  border: 1px solid var(--tv-border);
+  border-radius: 3px;
+  padding: 4px 9px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.tv-btn:hover { background: var(--tv-hover); border-color: var(--tv-accent); }
+.tv-btn:active { transform: translateY(1px); }
+.tv-btn-sm { padding: 3px 8px; font-size: 11.5px; }
+
+.tv-btn-active {
+  background: var(--tv-accent);
+  border-color: var(--tv-accent);
+  color: #fff;
+  font-weight: 600;
+}
+.tv-btn-danger { color: var(--tv-down); }
+.tv-btn-danger:hover { background: rgba(242, 54, 69, 0.12); border-color: var(--tv-down); }
+
+.tv-btn-accent {
+  background: rgba(255, 183, 77, 0.12);
+  border-color: rgba(255, 183, 77, 0.5);
+  color: var(--tv-predict);
+  font-weight: 600;
+}
+.tv-btn-accent:hover { background: rgba(255, 183, 77, 0.2); }
+.tv-btn-accent.tv-btn-busy { opacity: 0.55; cursor: progress; }
+
+.tv-select {
+  background: var(--tv-panel);
+  color: var(--tv-text);
+  border: 1px solid var(--tv-border);
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-size: 12px;
+  max-width: 180px;
+  cursor: pointer;
+}
+.tv-select:hover { border-color: var(--tv-accent); }
+.tv-select option { background: var(--tv-panel); color: var(--tv-text); }
+
+.tv-searchrow { display: flex; gap: 4px; align-items: center; }
+.tv-search {
+  background: var(--tv-panel);
+  color: var(--tv-text);
+  border: 1px solid var(--tv-border);
+  border-radius: 3px;
+  padding: 4px 7px;
+  font-size: 11.5px;
+  width: 90px;
+  outline: none;
+  transition: border-color 0.12s;
+}
+.tv-search:focus { border-color: var(--tv-accent); }
+.tv-search::placeholder { color: var(--tv-muted); }
+
+/* indicator toggle pills (distinct from the accent Kronos button) */
+.tv-ind { color: var(--tv-muted); font-size: 11px; padding: 3px 7px; }
+.tv-ind.tv-btn-active {
+  background: rgba(217, 89, 251, 0.16);
+  border-color: rgba(217, 89, 251, 0.55);
+  color: #e2b3ff;
+  font-weight: 600;
+}
+.tv-ind.tv-btn-active::before { content: "● "; font-size: 9px; vertical-align: 1px; }
+.ind-gear {
+  margin-left: 4px;
+  font-size: 9.5px;
+  opacity: 0.55;
+  cursor: pointer;
+  transition: opacity 0.12s, transform 0.15s;
+}
+.ind-gear:hover { opacity: 1; transform: rotate(45deg); }
+.tv-ind.tv-btn-active .ind-gear { color: #fff; }
+
+/* ------------------- indicator settings popover -------------------------- */
+.ind-settings {
+  position: fixed;
+  z-index: 3000;
+  width: 250px;
+  background: rgba(24, 28, 38, 0.98);
+  border: 1px solid var(--tv-border);
+  border-radius: 5px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
+  font-size: 11.5px;
+  animation: pop-in 0.14s ease-out;
+}
+@keyframes pop-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.ind-settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px 6px;
+  font-weight: 700;
+  color: var(--tv-accent);
+  border-bottom: 1px solid var(--tv-border);
+}
+.ind-settings-x {
+  background: transparent;
+  border: none;
+  color: var(--tv-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 3px;
+  border-radius: 3px;
+}
+.ind-settings-x:hover { color: var(--tv-down); }
+.ind-settings-body { padding: 8px 10px 4px; }
+.ind-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 5px 0;
+}
+.ind-fname { color: var(--tv-muted); flex: none; }
+.ind-field input[type="number"],
+.ind-field select {
+  background: var(--tv-panel2);
+  color: var(--tv-text);
+  border: 1px solid var(--tv-border);
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-size: 11.5px;
+  width: 92px;
+  outline: none;
+}
+.ind-field input[type="number"]:focus,
+.ind-field select:focus { border-color: var(--tv-accent); }
+.ind-field input[type="color"] {
+  width: 44px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--tv-border);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+}
+.ind-settings-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px 9px;
+  border-top: 1px solid var(--tv-border);
+}
+
+.tv-badge {
+  background: var(--tv-panel);
+  border: 1px solid var(--tv-border);
+  border-radius: 3px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--tv-muted);
+  white-space: nowrap;
+}
+.tv-badge-live { color: var(--tv-up); border-color: rgba(8, 153, 129, 0.5); }
+.tv-badge-warn { color: var(--tv-predict); border-color: rgba(255, 183, 77, 0.5); }
+.tv-badge-err  { color: var(--tv-down); border-color: rgba(242, 54, 69, 0.5); }
+
+/* ----------------------------- multi-chart grid ------------------------- */
+body { display: flex; flex-direction: column; }
+
+#tv-main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+#chart-grid {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  gap: 3px;
+  padding: 3px;
+  background: rgba(13, 16, 23, 0.55);
+}
+#chart-grid.layout-1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+#chart-grid.layout-2 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+#chart-grid.layout-3 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; }
+#chart-grid.layout-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+/* ----------------------------- chart pane ------------------------------- */
+.pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: rgba(19, 23, 34, 0.78);
+  backdrop-filter: blur(10px) saturate(1.25);
+  -webkit-backdrop-filter: blur(10px) saturate(1.25);
+  border: 1px solid rgba(122, 132, 153, 0.22);
+  border-radius: 5px;
+  overflow: hidden;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+/* Fullscreen pane: backdrop-filter on a fullscreen element is a known
+   Chromium bug that renders the pane BLACK - disable it (and the rounded
+   corners/overflow clipping) so the chart fills the screen cleanly. */
+.pane:fullscreen {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: #131722 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  overflow: auto !important;
+}
+.pane:fullscreen .pane-chart {
+  flex: 1;
+  min-height: 0;
+}
+
+.pane.active {
+  border-color: var(--tv-accent);
+  box-shadow: 0 0 0 1px var(--tv-accent), 0 0 22px rgba(41, 98, 255, 0.30);
+}
+.pane:hover { border-color: #3a3f4d; }
+.pane.active:hover { border-color: var(--tv-accent); }
+
+.pane-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(30, 34, 45, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(122, 132, 153, 0.2);
+  flex: none;
+  user-select: none;
+}
+.pane-search {
+  background: var(--tv-panel2);
+  color: var(--tv-text);
+  border: 1px solid var(--tv-border);
+  border-radius: 3px;
+  padding: 3px 7px;
+  font-size: 11px;
+  width: 76px;
+  outline: none;
+  transition: border-color 0.12s;
+}
+.pane-search:focus { border-color: var(--tv-accent); }
+.pane-select {
+  background: var(--tv-panel);
+  color: var(--tv-text);
+  border: 1px solid var(--tv-border);
+  border-radius: 3px;
+  padding: 3px 5px;
+  font-size: 11.5px;
+  max-width: 140px;
+  cursor: pointer;
+}
+.pane-select:hover { border-color: var(--tv-accent); }
+.pane-select option { background: var(--tv-panel); color: var(--tv-text); }
+
+.pane-intervals { display: flex; gap: 1px; margin-left: auto; }
+.pane-intervals .tv-btn-sm { padding: 2px 6px; font-size: 10.5px; }
+
+.pane-close {
+  background: transparent;
+  border: none;
+  color: var(--tv-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: color 0.12s, background 0.12s;
+}
+.pane-close:hover { color: var(--tv-down); background: rgba(242, 54, 69, 0.12); }
+.pane-ai {
+  background: transparent;
+  border: 1px solid var(--tv-border);
+  color: var(--tv-muted);
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 10.5px;
+  padding: 2px 6px;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.pane-ai:hover { border-color: var(--tv-predict); color: var(--tv-predict); }
+.pane-ai.tv-btn-auto-on {
+  background: rgba(255, 183, 77, 0.16);
+  border-color: rgba(255, 183, 77, 0.55);
+  color: var(--tv-predict);
+}
+
+.pane-chart {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.pane-chart > div:first-child { width: 100%; height: 100%; }
+
+.pane-legend {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  z-index: 10;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  font-size: 11.5px;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pane-legend .legend-title { font-weight: 700; color: var(--tv-text); }
+.pane-legend .legend-time { color: var(--tv-muted); opacity: 0.75; }
+.pane-legend .legend-ohlc { color: var(--tv-muted); }
+.pane-legend .legend-ohlc .l-o { color: var(--tv-muted); }
+.pane-legend .legend-ohlc .l-h, .pane-legend .legend-ohlc .l-l,
+.pane-legend .legend-ohlc .l-c { font-weight: 600; }
+.pane-legend .legend-ohlc .up { color: var(--tv-up); }
+.pane-legend .legend-ohlc .down { color: var(--tv-down); }
+.pane-legend .legend-ohlc .l-v { color: var(--tv-muted); }
+.pane-legend .legend-chg { font-weight: 700; }
+.pane-legend .legend-chg.up { color: var(--tv-up); }
+.pane-legend .legend-chg.down { color: var(--tv-down); }
+
+.pane-autonote {
+  position: absolute;
+  bottom: 6px;
+  right: 10px;
+  z-index: 10;
+  font-size: 10.5px;
+  color: var(--tv-predict);
+  background: rgba(255, 183, 77, 0.1);
+  border: 1px solid rgba(255, 183, 77, 0.4);
+  border-radius: 4px;
+  padding: 2px 8px;
+  pointer-events: none;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+/* "What the AI is thinking" panel - top-LEFT of the chart, just below the
+   legend row, so it never covers the newest candles / the forecast path on
+   the right. Click the header to collapse it to a single line. */
+.kronos-note {
+  position: absolute;
+  top: 34px;
+  left: 12px;
+  right: auto;
+  z-index: 10;
+  background: rgba(24, 28, 38, 0.92);
+  border: 1px solid rgba(255, 183, 77, 0.45);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--tv-predict);
+  max-width: 330px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  user-select: none;
+}
+.kronos-note .ai-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kronos-note .ai-title { font-weight: 700; color: #ffd9a0; }
+.kronos-note .ai-dir { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+.kronos-note .ai-toggle {
+  background: transparent;
+  border: none;
+  color: var(--tv-predict);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0 2px;
+}
+.kronos-note .ai-body {
+  margin-top: 5px;
+  border-top: 1px solid rgba(255, 183, 77, 0.25);
+  padding-top: 5px;
+}
+.kronos-note.collapsed .ai-body { display: none; }
+.kronos-note .ai-next { color: var(--tv-text); }
+.kronos-note .kronos-next { font-weight: 700; color: #fff; }
+.kronos-note .ai-path {
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--tv-muted);
+}
+.kronos-note .kronos-path { color: #b9f6ca; }
+.kronos-note .ai-conf {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 5px 0 3px;
+  font-size: 10.5px;
+  color: var(--tv-muted);
+}
+.kronos-note .ai-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.kronos-note .ai-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #26a69a, #4dd0e1);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+.kronos-note .ai-conf-val { color: var(--tv-text); }
+.kronos-note .ai-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+.kronos-note .ai-chip {
+  padding: 1px 7px;
+  border-radius: 9px;
+  font-size: 9.5px;
+  background: rgba(255, 183, 77, 0.12);
+  border: 1px solid rgba(255, 183, 77, 0.35);
+  color: #ffd9a0;
+}
+.kronos-note .ai-chip-warn {
+  background: rgba(242, 54, 69, 0.14);
+  border-color: rgba(242, 54, 69, 0.45);
+  color: #ff8a80;
+}
+.kronos-note .ai-why { margin: 4px 0 2px; padding-left: 14px; font-size: 10.5px; color: #d1d4dc; }
+.kronos-note .ai-why li { margin: 1.5px 0; }
+.kronos-note .ai-meta { margin-top: 4px; padding-top: 3px; font-size: 9.5px; color: var(--tv-muted); }
+.kronos-note .kronos-ctx { display: block; color: #b9a6ff; }
+.kronos-note .ai-note { margin-top: 3px; font-size: 9px; color: #9aa3b2; opacity: 0.8; }
+
+/* English review of the forecast (hosted LLM via /api/ai/review). Sits at
+   the BOTTOM of the golden box - everything above it (direction / confidence
+   / regime / why / meta) is the original Kronos data, untouched. */
+.kronos-note .ai-review {
+  margin-top: 6px;
+  border-top: 1px solid rgba(255, 183, 77, 0.25);
+  padding-top: 5px;
+}
+.kronos-note .ai-review-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #ffd9a0;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.kronos-note .ai-review-status {
+  font-weight: 600;
+  font-size: 9px;
+  color: var(--tv-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.kronos-note .ai-review-body {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--tv-text);
+  white-space: pre-wrap;
+}
+.kronos-note .ai-review-body:empty::before { content: '…'; color: var(--tv-muted); }
+
+/* ☰ sidebar toggle: dimmed fill when the sidebar is HIDDEN (blue active
+   state would read as "sidebar on", which is backwards). */
+.tv-btn.tv-btn-side-hidden {
+  background: rgba(122, 132, 153, 0.28);
+  border-color: #787b86;
+  color: #d1d4dc;
+}
+
+/* ----------------------------- toolbar tweaks --------------------------- */
+.tv-btn { transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.08s; }
+.tv-btn.tv-btn-busy { opacity: 0.55; cursor: progress; }
+.tv-btn-auto-on {
+  background: rgba(255, 183, 77, 0.18);
+  border-color: var(--tv-predict);
+  color: #ffd9a0;
+  font-weight: 600;
+}
+
+/* fluid pane transitions on layout switch */
+.pane { animation: pane-in 0.22s ease-out; }
+@keyframes pane-in {
+  from { opacity: 0; transform: scale(0.985); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ----------------------------- status bar ------------------------------- */
+.tv-statusbar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 28px;
+  padding: 0 10px;
+  background: rgba(30, 34, 45, 0.62);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-top: 1px solid rgba(122, 132, 153, 0.25);
+  font-size: 11px;
+  color: var(--tv-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.tv-spacer2 { flex: 1; }
+#st-hint { color: var(--tv-muted); opacity: 0.8; }
+
+/* --------------------- per-pane drawings manager ------------------------- */
+.pane-drawbtn { color: var(--tv-muted); }
+.pane-drawbtn:hover { border-color: var(--tv-accent); color: var(--tv-accent); }
+
+.drawings-pop {
+  position: absolute;
+  top: 30px;
+  right: 8px;
+  z-index: 40;
+  width: 230px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: rgba(24, 28, 38, 0.97);
+  border: 1px solid var(--tv-border);
+  border-radius: 5px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+  padding: 4px 0;
+  font-size: 11.5px;
+}
+.drawings-head {
+  padding: 6px 10px 5px;
+  font-weight: 700;
+  color: var(--tv-accent);
+  border-bottom: 1px solid var(--tv-border);
+  margin-bottom: 2px;
+}
+.drawings-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  cursor: default;
+}
+.drawings-row:hover { background: rgba(41, 98, 255, 0.12); }
+.drawings-row.sel { background: rgba(41, 98, 255, 0.22); }
+.drawings-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--tv-text);
+}
+.drawings-del {
+  background: transparent;
+  border: none;
+  color: var(--tv-muted);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+.drawings-del:hover { color: var(--tv-down); background: rgba(242, 54, 69, 0.15); }
+.drawings-empty { padding: 10px; color: var(--tv-muted); }
+.drawings-foot {
+  padding: 6px 8px;
+  border-top: 1px solid var(--tv-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ------------------------ drawing color picker --------------------------- */
+#draw-color {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--tv-border);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  vertical-align: middle;
+}
+#draw-color::-webkit-color-swatch-wrapper { padding: 2px; }
+#draw-color::-webkit-color-swatch { border: none; border-radius: 2px; }
+#draw-color::-moz-color-swatch { border: none; border-radius: 2px; }
+
+/* --------------------- right-click context menu -------------------------- */
+.ctx-menu {
+  position: fixed;
+  z-index: 4000;
+  min-width: 200px;
+  background: rgba(24, 28, 38, 0.98);
+  border: 1px solid var(--tv-border);
+  border-radius: 5px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
+  padding: 4px 0;
+  font-size: 12px;
+  animation: pop-in 0.12s ease-out;
+}
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: var(--tv-text);
+  transition: background 0.1s, color 0.1s;
+}
+.ctx-item:hover { background: var(--tv-hover); color: #fff; }
+.ctx-ic { width: 16px; text-align: center; color: var(--tv-muted); }
+.ctx-item:hover .ctx-ic { color: #fff; }
+.ctx-sep { height: 1px; background: var(--tv-border); margin: 4px 0; }
+
+/* ----------------------------- toasts ------------------------------------ */
+/* -------------------- compare / overlay popover -------------------------- */
+.cmp-pop {
+  position: fixed;
+  z-index: 4000;
+  background: var(--tv-panel2);
+  border: 1px solid var(--tv-accent);
+  border-radius: 6px;
+  padding: 10px 12px;
+  width: 280px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+}
+.cmp-pop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.cmp-x { background: none; border: none; color: var(--tv-muted); cursor: pointer; font-size: 14px; }
+.cmp-input {
+  width: 100%;
+  background: var(--tv-input, #1a1d24);
+  border: 1px solid var(--tv-border);
+  border-radius: 4px;
+  color: var(--tv-text);
+  padding: 6px 8px;
+  font-size: 12px;
+  outline: none;
+}
+.cmp-input:focus { border-color: var(--tv-accent); }
+.cmp-hints { max-height: 180px; overflow-y: auto; margin-top: 6px; }
+.cmp-hint {
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.cmp-hint:hover { background: var(--tv-hover); }
+.cmp-actions { display: flex; justify-content: space-between; margin-top: 8px; }
+
+.brief-pop {
+  position: fixed;
+  top: 56px;
+  right: 12px;
+  z-index: 4500;
+  width: 380px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 80px);
+  background: var(--tv-panel2);
+  border: 1px solid var(--tv-accent);
+  border-radius: 6px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+}
+/* The `hidden` attribute must win over display:flex above - otherwise the
+   panel can never be closed (the ✕ button sets hidden, but author CSS beats
+   the UA stylesheet's [hidden]{display:none}). */
+.brief-pop[hidden] { display: none; }
+.brief-pop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--tv-border);
+}
+.brief-pop-head b { color: var(--tv-accent); }
+.brief-x { background: none; border: none; color: var(--tv-muted); cursor: pointer; font-size: 14px; }
+.brief-x:hover { color: var(--tv-text); }
+.brief-pop-body { padding: 10px 12px; overflow-y: auto; }
+.brief-sec { margin-bottom: 12px; }
+.brief-sec:last-child { margin-bottom: 4px; }
+.brief-sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 5px;
+  color: var(--tv-text);
+}
+.brief-sec-head em {
+  font-style: normal;
+  font-weight: 400;
+  font-size: 10.5px;
+  color: var(--tv-muted);
+}
+.brief-regen {
+  background: none;
+  border: none;
+  color: var(--tv-accent);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+  border-radius: 3px;
+}
+.brief-regen:hover { background: var(--tv-hover); }
+.brief-text {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--tv-text);
+  background: var(--tv-input, #1a1d24);
+  border: 1px solid var(--tv-border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+}
+.brief-foot {
+  font-size: 10.5px;
+  color: var(--tv-muted);
+  border-top: 1px solid var(--tv-border);
+  padding: 7px 12px;
+}
+
+#toast-stack {
+  position: fixed;
+  top: 52px;
+  right: 12px;
+  z-index: 5000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toast {
+  background: var(--tv-panel2);
+  border: 1px solid var(--tv-accent);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--tv-text);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  animation: toast-in 0.18s ease-out;
+  max-width: 320px;
+}
+.toast.err { border-color: var(--tv-down); }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --------------------- watchlist / alerts empty + compare --------------- */
+.al-empty {
+  padding: 10px;
+  font-size: 11px;
+  color: var(--tv-muted);
+  text-align: center;
+}
+.legend-compare {
+  color: #ffb74d;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+/* --------------------- patterns panel ---------------------------------- */
+#pt-scan { margin-left: auto; }
+.pt-row { cursor: pointer; }
+.pt-row.clickable:hover { background: rgba(41, 98, 255, 0.12); }
+.pt-badge {
+  font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px;
+  margin-right: 6px; white-space: nowrap;
+}
+.pt-badge.up   { color: #26a69a; background: rgba(38, 166, 154, 0.15); }
+.pt-badge.down { color: #ef5350; background: rgba(239, 83, 80, 0.15); }
+.pt-badge.flat { color: #90a4ae; background: rgba(144, 164, 174, 0.15); }
+.pt-time { color: var(--tv-muted); font-size: 10px; white-space: nowrap; }
+.pt-sym  { color: #d1d4dc; font-size: 11px; font-weight: 600; margin: 0 4px; }
+
+/* ============================ sidebar panels ============================= */
+.tv-sidebar {
+  width: 264px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  overflow-y: auto;
+  background: rgba(30, 34, 45, 0.45);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  border-right: 1px solid rgba(122, 132, 153, 0.2);
+  transition: width 0.18s ease, opacity 0.18s ease, transform 0.18s ease;
+}
+.tv-sidebar.hidden-side { width: 0; opacity: 0; padding: 0; border: none; overflow: hidden; }
+
+.tv-sidepanel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 42%;
+  background: rgba(19, 23, 34, 0.55);
+  border: 1px solid rgba(122, 132, 153, 0.18);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.tv-sidehead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 8px;
+  font-size: 9.5px;
+  letter-spacing: 0.9px;
+  font-weight: 800;
+  color: var(--tv-muted);
+  border-bottom: 1px solid rgba(122, 132, 153, 0.16);
+  flex: none;
+  user-select: none;
+}
+.al-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+  min-height: 56px;
+}
+.al-list::-webkit-scrollbar { width: 6px; }
+.al-list::-webkit-scrollbar-thumb { background: var(--tv-panel2); border-radius: 3px; }
+.al-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  font-size: 11px;
+  border-radius: 3px;
+  margin-bottom: 2px;
+  transition: background 0.1s;
+}
+.al-row:hover { background: rgba(41, 98, 255, 0.12); }
+.al-sym { font-weight: 700; color: var(--tv-text); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.al-price { color: var(--tv-text); margin-left: auto; font-variant-numeric: tabular-nums; }
+.al-dir { color: var(--tv-muted); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.4px; }
+.al-rm {
+  background: transparent;
+  border: none;
+  color: var(--tv-muted);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+.al-rm:hover { color: var(--tv-down); background: rgba(242, 54, 69, 0.15); }
+
+/* ------------------------- news panel ----------------------------------- */
+.news-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 6px;
+  font-size: 11px;
+  border-radius: 3px;
+  margin-bottom: 3px;
+  cursor: pointer;
+  border-left: 2px solid var(--tv-muted);
+  transition: background 0.1s;
+}
+.news-row:hover { background: rgba(41, 98, 255, 0.12); }
+.news-row.pos { border-left-color: var(--tv-up); }
+.news-row.neg { border-left-color: var(--tv-down); }
+.news-title {
+  color: var(--tv-text);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.news-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--tv-muted);
+  font-size: 9.5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.news-src { overflow: hidden; text-overflow: ellipsis; }
+.news-sent {
+  font-weight: 700;
+  font-size: 9.5px;
+  padding: 0 5px;
+  border-radius: 3px;
+  flex: none;
+}
+.news-sent.pos { color: #26a69a; background: rgba(38, 166, 154, 0.15); }
+.news-sent.neg { color: #ef5350; background: rgba(239, 83, 80, 0.15); }
+.news-sent.neu { color: #90a4ae; background: rgba(144, 164, 174, 0.15); }
+.news-loading { color: var(--tv-muted); }
+
+/* ========================== responsive / mobile ========================== */
+/* Slimmer toolbar on medium screens: hide the least-used groups so the
+   TradingView essentials (charts / timeframe / type / indicators) stay.
+   The toolbar itself still scrolls horizontally as a last resort. */
+@media (max-width: 1280px) {
+  .tv-toolbar #drawing-group,
+  .tv-toolbar #scale-group { display: none; }
+  .tv-sidebar { width: 232px; }
+}
+
+@media (max-width: 1024px) {
+  .tv-toolbar #range-group { display: none; }
+  .tv-sidebar { width: 200px; }
+  .pane-search { width: 56px; }
+  .pane-select { max-width: 100px; }
+}
+
+/* Tablets / small laptops: the sidebar drops below the charts as a strip of
+   panels (alerts / patterns / news) instead of a left column. */
+@media (max-width: 860px) {
+  #tv-main { flex-direction: column; }
+  .tv-sidebar {
+    width: 100%;
+    flex-direction: row;
+    max-height: 150px;
+    overflow-y: auto;
+    border-right: none;
+    border-bottom: 1px solid rgba(122, 132, 153, 0.2);
+    padding: 4px;
+  }
+  .tv-sidepanel { flex: 1; min-width: 0; max-height: none; }
+  .tv-sidebar.hidden-side { display: none; }
+  .tv-toolbar #charts-group { display: none; }
+}
+
+/* Phones: single-column chart grid, compact controls, fewer toolbar groups. */
+@media (max-width: 640px) {
+  .tv-toolbar { gap: 6px; padding: 0 6px; height: 40px; }
+  .tv-toolbar .tv-label { display: none; }
+  .tv-toolbar .tv-group { gap: 0; }
+  .tv-toolbar .tv-btn { padding: 3px 6px; font-size: 11px; }
+  .tv-toolbar #indicator-group { display: none; }
+  .tv-toolbar #type-group { display: none; }
+  #chart-grid.layout-2,
+  #chart-grid.layout-3,
+  #chart-grid.layout-4 {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+  }
+  .tv-statusbar { gap: 8px; font-size: 10px; padding: 0 6px; }
+  #st-hint { display: none; }
+  .pane-head { flex-wrap: wrap; gap: 4px; padding: 4px; }
+  .pane-intervals { margin-left: 0; flex-wrap: wrap; }
+  .tv-sidebar { max-height: 130px; }
+  .tv-sidepanel { min-width: 140px; }
+  .pane-legend { left: 8px; top: 6px; font-size: 10px; gap: 6px; }
+  .kronos-note { max-width: 75%; }
+}
