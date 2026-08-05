@@ -1,8 +1,10 @@
 """
-21_tv_webapp/server.py
-======================
-Standalone **TradingView-style Chart Viewer** for the Kronos platform — a
-self-contained FastAPI app that can replace external charting software.
+server.py
+=========
+Standalone **live chart terminal** for the Kronos platform — a
+self-contained FastAPI app: history REST, live WebSocket and the Kronos AI
+forecast overlay for the three public instruments (Nifty 50, NIFTY FUT,
+Bank Nifty).
 
 Endpoints
 ---------
@@ -12,7 +14,9 @@ Endpoints
 | ``GET  /``              | The chart UI (static/index.html)                 |
 | ``GET  /styles.css``    | Dark theme stylesheet                            |
 | ``GET  /app.js``        | Chart application bundle                         |
-| ``GET  /api/symbols``   | Watchlist for the symbol picker                  |
+| ``GET  /api/symbols``   | The 3 public instruments (symbol picker)         |
+| ``GET  /api/search``    | Search - only the 3 public instruments ever      |
+| ``GET  /api/ltp``       | Last traded price                                |
 | ``GET  /api/history``   | OHLCV candles (Angel One REST, CSV fallback)     |
 | ``GET  /api/auth/status``| SmartAPI login status + market clock             |
 | ``POST /api/auth/login``| Perform the daily TOTP login                     |
@@ -41,7 +45,8 @@ Data flow
 
 Run
 ---
-    .venv/Scripts/python.exe 21_tv_webapp/server.py
+    .venv/Scripts/python.exe server.py      # Windows
+    .venv/bin/python server.py              # Linux / macOS (see docs/)
     -> http://127.0.0.1:81
 
 Credentials

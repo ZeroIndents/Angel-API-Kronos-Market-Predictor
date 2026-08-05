@@ -37,10 +37,21 @@ Two NVIDIA Kronos variants are supported (GPU-only):
 | `Kronos-mini` | 4.1M | 2048 |
 | `Kronos-small` (default) | 24.7M | 512 |
 
+## Platform guides
+
+Complete, platform-specific documentation:
+
+| Platform | Guide | Notes |
+|---|---|---|
+| 🪟 Windows | [`docs/WINDOWS.md`](docs/WINDOWS.md) | CUDA torch install, `.bat` autostart |
+| 🍎 macOS | [`docs/MACOS.md`](docs/MACOS.md) | **GPU warning**: Kronos is CUDA-only, so macOS cannot run the forecast locally — use a Mac as a browser client for a server on an NVIDIA machine |
+| 🐧 Linux | [`docs/LINUX.md`](docs/LINUX.md) | NVIDIA driver setup, systemd auto-start |
+
 ## Quickstart (Windows)
 
 ```bat
 py -m venv .venv
+.venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cu128
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 .venv\Scripts\python.exe server.py
 ```
