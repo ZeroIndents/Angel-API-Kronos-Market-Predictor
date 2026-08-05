@@ -7,6 +7,9 @@ smartapi_tokens.json
 # Vendored upstream repo (clone it yourself, see README)
 Kronos/
 
+# Runtime market-data cache (re-downloaded on first run)
+scrip_master_cache.csv
+
 # Python
 __pycache__/
 *.py[cod]
