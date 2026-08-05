@@ -37,37 +37,26 @@ MASTER_URL = "https://margincalculator.angelbroking.com/OpenAPI_File/files/OpenA
 CACHE_FILE = BASE_DIR / "scrip_master_cache.csv"
 MASTER_TTL_DAYS = 7
 
-# Hard-coded fallback for when the master cannot be downloaded (indices only;
-# equity tokens must come from the real master).
+# Hard-coded fallback for when the master cannot be downloaded (the two
+# index assets the public build ships with - see CURATED_NAMES).
 _FALLBACK = [
     {"token": "99926000", "symbol": "Nifty 50", "name": "NIFTY"},
     {"token": "99926009", "symbol": "Nifty Bank", "name": "BANKNIFTY"},
-    {"token": "99926008", "symbol": "Nifty IT", "name": "NIFTY IT"},
-    {"token": "99926004", "symbol": "Nifty 500", "name": "NIFTY 500"},
-    {"token": "99926011", "symbol": "NIFTY MIDCAP 100", "name": "NIFTY MIDCAP 100"},
-    {"token": "99926017", "symbol": "India VIX", "name": "INDIA VIX"},
 ]
 
-# TradingView-style default watchlist: symbol names resolved against the
-# downloaded master, so the tokens always match Angel's current file.
+# PUBLIC BUILD - exactly THREE chartable instruments ship with this
+# terminal: the Nifty 50 index, the near-month NIFTY future and the Bank
+# Nifty index. Symbol names are resolved against the downloaded master so
+# the tokens always match Angel's current file.
 CURATED_NAMES = [
-    "Nifty 50", "Nifty Bank", "Nifty IT", "Nifty 500", "NIFTY MIDCAP 100",
-    "RELIANCE", "TCS", "HDFCBANK", "ICICIBANK", "INFY", "SBIN", "BHARTIARTL",
-    "ITC", "HINDUNILVR", "LT", "AXISBANK", "KOTAKBANK", "MARUTI", "TATAMOTORS",
-    "TITAN", "WIPRO", "ADANIENT", "SUNPHARMA", "HCLTECH", "NTPC", "POWERGRID",
-    "ONGC", "TATASTEEL", "JSWSTEEL", "ULTRACEMCO", "BAJFINANCE", "ASIANPAINT",
-    "M&M", "NESTLEIND", "TATAPOWER",
+    "Nifty 50", "Nifty Bank",
 ]
 
 # Near-month futures: display label -> base name in the master. Contracts
 # roll every month (NIFTY25AUG26FUT -> NIFTY29SEP26FUT -> ...), so these
-# labels always resolve to whichever expiry is the closest future one. Any
-# "<NAME> FUT" label is also resolved generically in resolve() - these just
-# give the most liquid ones a curated slot in the default watchlist.
+# labels always resolve to whichever expiry is the closest future one.
 CURATED_FUTURES = [
-    "NIFTY FUT", "BANKNIFTY FUT",
-    "RELIANCE FUT", "TCS FUT", "HDFCBANK FUT", "ICICIBANK FUT", "INFY FUT",
-    "SBIN FUT", "GOLD", "SILVER", "CRUDEOIL", "NATURALGAS", "COPPER",
+    "NIFTY FUT",
 ]
 FUTURES_BASE = {
     "NIFTY FUT": "NIFTY",
@@ -171,76 +160,24 @@ def search(query: str = "", limit: int = 30) -> list[dict[str, Any]]:
       matches (GOLDBEES ETF)
 
     Returns a list of dicts with keys ``token``, ``symbol``, ``name`` and
-    ``instrumenttype``. An empty query returns the curated watchlist first,
-    then more indices - a TradingView-style default list.
+    ``instrumenttype``.
+
+    PUBLIC BUILD: only the three curated instruments (Nifty 50, NIFTY FUT,
+    Bank Nifty) are ever returned - a query merely filters those three, so
+    no other instrument in the SmartAPI master is reachable from the picker.
     """
-    df = load()
+    curated = curated_symbols()
     q = (query or "").strip().upper()
     if not q:
-        curated = curated_symbols()
-        seen = {c["symbol"] for c in curated}
-        tail = df[~df["symbol"].isin(seen)].head(20)
-        rows = curated + tail.to_dict("records")
-        return rows[:limit]
-
-    df = df.copy()
-    df["token"] = df["token"].astype(str)  # live aggregator keys candles by string tokens
-    sym = df["symbol"].astype(str).str.upper()
-    name = df["name"].astype(str).str.upper()
-    itype = df["instrumenttype"].astype(str).str.upper()
-
-    tokens = q.split()
-    mask: pd.Series | None = None
-    name_hits = pd.Series(0, index=df.index, dtype=int)
-    sym_hits = pd.Series(0, index=df.index, dtype=int)
-    for tok in tokens:
-        if tok in ("FUT", "FUTURE", "FUTURES"):
-            # "FUT" keyword -> any derivatives future instrument.
-            tm = itype.str.contains("FUT", na=False)
-            name_hits += tm.astype(int)
-            sym_hits += tm.astype(int)
-        elif tok in ("CE", "CALL"):
-            tm = sym.str.endswith("CE")
-            name_hits += tm.astype(int)
-            sym_hits += tm.astype(int)
-        elif tok in ("PE", "PUT"):
-            tm = sym.str.endswith("PE")
-            name_hits += tm.astype(int)
-            sym_hits += tm.astype(int)
-        elif tok.isdigit():
-            # Numeric token -> strike embedded in the option symbol.
-            tm = sym.str.contains(tok, na=False)
-            sym_hits += tm.astype(int)
-        else:
-            ntm = name.str.contains(tok, na=False)
-            stm = sym.str.contains(tok, na=False)
-            tm = ntm | stm
-            name_hits += ntm.astype(int)
-            sym_hits += stm.astype(int)
-        mask = tm if mask is None else (mask & tm)
-
-    if mask is None:
-        return []
-    hits = df[mask].copy()
-    if hits.empty:
-        return []
-    hits["_nh"] = name_hits[mask]
-    hits["_sh"] = sym_hits[mask]
-    # Exact-name rows (whole query, or the first token for multi-word queries
-    # like "NIFTY FUT" / "NIFTY 21700 CE") win over substring matches, so
-    # "GOLD" picks the MCX commodity, not the GOLDBEES ETF.
-    name_col = name[mask]
-    hits["_eq"] = name_col.eq(q)
-    if len(tokens) > 1:
-        hits["_eq"] = hits["_eq"] | name_col.eq(tokens[0])
-    # Segment tie-break: NSE cash > NFO > BSE > MCX (RELIANCE NSE vs BSE).
-    order = {"NSE": 0, "NFO": 1, "BSE": 2, "MCX": 3}
-    hits["_seg"] = hits["exch_seg"].astype(str).map(order).fillna(4)
-    hits = hits.sort_values(
-        ["_eq", "_nh", "_sh", "_seg", "symbol"],
-        ascending=[False, False, False, True, True],
-    ).head(limit)
-    return hits.drop(columns=["_eq", "_nh", "_sh", "_seg"]).to_dict("records")
+        return curated[:limit]
+    out: list[dict[str, Any]] = []
+    for rec in curated:
+        label = display_label(rec).upper()
+        sym = str(rec.get("symbol", "") or "").upper()
+        name = str(rec.get("name", "") or "").upper()
+        if q in label or q in sym or q in name:
+            out.append(rec)
+    return out[:limit]
 
 
 def _near_month_future(base_name: str, exch_seg: str = "NFO",
@@ -328,6 +265,10 @@ def display_label(rec: dict[str, Any]) -> str:
     sym = str(rec.get("symbol", "") or "")
     if it == "" and seg == "MCX":
         return name or sym                       # commodity spot
+    if name.upper() == "NIFTY":
+        return "Nifty 50"                        # master symbol "NIFTY 50"
+    if name.upper() == "BANKNIFTY":
+        return "Bank Nifty"                      # master symbol "NIFTY BANK"
     if " " in sym:
         return sym
     return name or sym

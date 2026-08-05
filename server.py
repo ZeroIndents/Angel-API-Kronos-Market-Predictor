@@ -198,9 +198,17 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 # Data helpers
 # ---------------------------------------------------------------------------
+# PUBLIC BUILD - exactly THREE chartable instruments. Every resolution
+# path (history, ltp, live WS, forecast) is gated through _resolve_asset, so
+# this single allowlist keeps the terminal locked to these instruments no
+# matter what symbol string a client sends. 'Nifty Bank' is the same index
+# as 'Bank Nifty' (alias kept for the symbol picker dedup).
+ALLOWED_SYMBOLS = {"Nifty 50", "NIFTY FUT", "Bank Nifty", "Nifty Bank"}
+
+
 def _resolve_token(symbol: str) -> str | None:
     """SmartAPI token for a display label (index assets first, then the
-    market-universe master for equities like 'RELIANCE')."""
+    market-universe master for NIFTY FUT)."""
     asset = _resolve_asset(symbol)
     return asset["token"] if asset else None
 
@@ -213,7 +221,14 @@ def _resolve_asset(symbol: str) -> dict | None:
     consumer (history fetch, live broadcaster, CSV recorder) must use the
     instrument's own segment or the request/stream silently returns nothing -
     this helper keeps them aligned for equities, indices, index/stock
-    futures, options and commodities alike."""
+    futures, options and commodities alike.
+
+    PUBLIC BUILD: refuses anything outside ALLOWED_SYMBOLS - a symbol picker
+    limited to the three curated instruments is meaningless if /api/history
+    still serves the whole SmartAPI universe to hand-crafted requests.
+    """
+    if symbol not in ALLOWED_SYMBOLS:
+        return None
     if symbol in LIVE_ASSETS:
         info = LIVE_ASSETS[symbol]
         return {"token": info["token"], "exchange": "NSE",

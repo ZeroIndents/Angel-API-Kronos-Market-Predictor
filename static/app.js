@@ -54,10 +54,11 @@
   var RESET_BARS = { '1m': 200, '5m': 200, '15m': 200, '30m': 200, '1H': 200, '1D': 120 };
   var RIGHT_OFFSET_BARS = 8;
   var INTERVAL_BUTTONS = ['1m', '5m', '15m', '30m', '1H', '1D'];
-  // Default panes: two spot indices, the near-month NIFTY future and a large
-  // cap equity. 'NIFTY FUT' resolves server-side to the current month's NFO
-  // contract (NIFTY25AUG26FUT, ...) and rolls automatically at expiry.
-  var DEFAULT_SYMBOLS = ['Nifty 50', 'NIFTY FUT', 'Bank Nifty', 'RELIANCE'];
+  // PUBLIC BUILD: exactly three chartable instruments - the Nifty 50 index,
+  // the near-month NIFTY future and the Bank Nifty index. 'NIFTY FUT'
+  // resolves server-side to the current month's NFO contract
+  // (NIFTY25AUG26FUT, ...) and rolls automatically at expiry.
+  var DEFAULT_SYMBOLS = ['Nifty 50', 'NIFTY FUT', 'Bank Nifty'];
   var MAX_PANES = 1;   // public build: single chart only
 
   var INDICATORS = {
@@ -4396,7 +4397,7 @@
   /* ------------------------------ boot ------------------------------------ */
   /* Embedding support: the Kronos Local Lab opens this terminal with URL
      params so the embedded chart shows exactly what the lab selected:
-       ?symbol=RELIANCE&interval=1m&ai=1&layout=1
+       ?symbol=Nifty 50&interval=1m&ai=1&layout=1
      - symbol   preselects pane 0's market (must exist in the watchlist)
      - interval preselects pane 0's timeframe
      - ai=1     switches the Kronos forecast + auto-predict ON for pane 0
