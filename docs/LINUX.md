@@ -8,14 +8,22 @@
 
 ## 1. What this project is
 
-**Kronos View** is a self-hosted **live chart terminal** built around
-NVIDIA's **Kronos** zero-shot financial forecasting model. It shows one chart
-at a time — Nifty 50, NIFTY FUT, or Bank Nifty — streams **live ticks** from
-Angel One SmartAPI, and lets the Kronos model **predict the next 30 candles**
-as a dashed overlay on the chart.
+**Kronos View** is a self-hosted **live chart terminal** built around the
+**Kronos** zero-shot financial forecasting model. It shows one chart at a
+time — Nifty 50, NIFTY FUT, or Bank Nifty — streams **live ticks** from Angel
+One SmartAPI, and lets the Kronos model **predict the next 30 candles** as a
+dashed overlay on the chart.
 
 > ⚠️ **Research / educational demo only — not investment advice.**
 > See `LICENSE` (viewing license, all rights reserved).
+
+### About the AI model
+
+Kronos is an **open-source research model from a Tsinghua University team**
+(Yu Shi, Zongliang Fu, et al.) — *"Kronos: A Foundation Model for the
+Language of Financial Markets"*, [arXiv:2508.02739](https://arxiv.org/abs/2508.02739),
+accepted at **AAAI 2026**. It is **not** an NVIDIA product. NVIDIA's only
+connection is that the authors trained on RTX 4090D GPUs.
 
 ### Feature list
 
@@ -53,16 +61,15 @@ server refuses to resolve any other symbol even via hand-crafted API calls.
 
 | Requirement | Notes |
 |---|---|
-| **NVIDIA GPU with CUDA** | Kronos inference is **GPU-only** — deliberately no CPU fallback. Any CUDA-capable GPU works (models are tiny: 4.1M / 24.7M params). |
-| **NVIDIA driver** | Supports CUDA 12.8. Verify with `nvidia-smi`. |
 | **Python 3.10 – 3.12 (64-bit)** | Debian/Ubuntu: `python3.11` etc. via apt. Developed on Python 3.10. |
-| **~2 GB free disk** | venv + PyTorch CUDA wheels (~2.5 GB with torch) |
+| **~2 GB free disk** | venv + PyTorch wheels |
 | **Internet** | First run: Angel scrip master (~34 MB) + Kronos model weights from Hugging Face |
 
 ### Optional
 
 | Item | Why |
 |---|---|
+| **NVIDIA GPU + driver** | Optional **speedup** — CPU works fine (models are 4.1M / 24.7M params). With a GPU, install the CUDA torch wheel (Step 3B). |
 | `systemd` | Auto-start the server at boot (guide below) — present on virtually all distros |
 | `tmux` / `screen` | Run the server in the background without systemd |
 
@@ -77,7 +84,7 @@ Kronos_windows/
 │   ├── index.html          # Single-page chart UI (bare toolbar)
 │   ├── app.js              # Chart application (lightweight-charts v5.2)
 │   └── styles.css          # Dark theme
-├── 2_kronos_inference.py   # GPU inference core — Kronos-mini / Kronos-small ONLY
+├── 2_kronos_inference.py   # Inference core — Kronos-mini / Kronos-small, auto device (CUDA/CPU)
 ├── 8_smartapi_auth.py      # Angel One session manager (daily TOTP 2FA login)
 ├── 9_smartapi_fetch.py     # Angel One REST history fetcher
 ├── 10_smartapi_live.py     # Live tick → 5m candle aggregator
@@ -96,9 +103,9 @@ Kronos_windows/
 2. **Live** — one shared `SmartWebSocketV2` connection streams ticks to the
    browser over the server's own `/ws`; the UI folds them into the forming
    candle.
-3. **Forecast** — `/api/kronos/forecast` runs the GPU Kronos model on the
-   current candles and returns a predicted path the UI draws as a dashed
-   line.
+3. **Forecast** — `/api/kronos/forecast` runs the Kronos model (CUDA GPU if
+   detected, otherwise CPU) on the current candles and returns a predicted
+   path the UI draws as a dashed line.
 
 ---
 
@@ -118,10 +125,10 @@ sudo apt install -y python3.11 python3.11-venv python3-pip git curl
 > `python3 --version` — must be 3.10–3.12). The project was developed on
 > Python 3.10.
 
-### Step 2 — NVIDIA driver + CUDA
+### Step 2 — (optional) NVIDIA driver + CUDA
 
-Kronos ships as a **CUDA PyTorch wheel** (`cu128`), so you do **not** need
-the full CUDA toolkit — you need a driver that supports CUDA 12.8.
+CPU-only machines can **skip this step entirely**. With an NVIDIA GPU, the
+CUDA torch wheel gives ~2–5× faster forecasts.
 
 ```bash
 # Check for an existing NVIDIA GPU + driver
@@ -146,8 +153,6 @@ After reboot verify:
 nvidia-smi
 ```
 
-You should see the GPU model and a CUDA version row (≥ 12.x).
-
 ### Step 3 — Clone the project + the Kronos model repo
 
 ```bash
@@ -166,9 +171,17 @@ source .venv/bin/activate
 pip install --upgrade pip
 ```
 
-**Important:** install the **CUDA build** of PyTorch first — a plain
-`pip install torch` on Linux pulls the CPU-only wheel and Kronos will fail
-at startup:
+The device auto-detects (CUDA GPU → CPU), so **option A works on every
+machine**:
+
+```bash
+pip install -r requirements.txt
+```
+
+#### Step 4B (optional) — NVIDIA GPU speedup
+
+Only with an NVIDIA GPU: install the CUDA torch build **before** the
+requirements line:
 
 ```bash
 pip install torch --index-url https://download.pytorch.org/whl/cu128
@@ -178,14 +191,13 @@ pip install -r requirements.txt
 > `cu128` = CUDA 12.8. Older driver? Pick the matching index URL
 > (`cu121`, `cu124`, ...) from [pytorch.org/get-started](https://pytorch.org/get-started/locally/).
 
-### Step 5 — Verify the GPU works
+### Step 5 — (optional) Verify the GPU
 
 ```bash
 python -c "import torch; print('CUDA available:', torch.cuda.is_available())"
 ```
 
-Must print `CUDA available: True`. If `False`: driver too old/missing —
-back to Step 2.
+`True` → forecasts badge `⚡GPU`. `False` → runs on CPU (badge `CPU`) — fine.
 
 ### Step 6 — Configure Angel One credentials
 
@@ -227,9 +239,8 @@ python server.py
 Then open **http://localhost:81** — or `http://<SERVER-IP>:81` from any
 device on the network. `Ctrl+C` stops it.
 
-On boot the server starts a background CSV recorder and warms the GPU
-(preloads the model + runs one tiny forecast) so the first real click is
-instant.
+On boot the server starts a background CSV recorder and warms the model on
+the active device (CUDA or CPU) so the first real click is instant.
 
 ### Background (no systemd)
 
@@ -257,7 +268,7 @@ ExecStart=/home/USER/Kronos_windows/.venv/bin/python /home/USER/Kronos_windows/s
 Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
-# First start may download model weights + warm the CUDA context; give it room.
+# First start may download model weights + warm the compute device; give it room.
 TimeoutStartSec=300
 TimeoutStopSec=30
 
@@ -301,9 +312,9 @@ All endpoints are on `http://localhost:81`:
 | `GET /api/search?q=...` | Search — returns only the 3 instruments |
 | `GET /api/ltp?symbol=...` | Last traded price |
 | `GET /api/history?symbol=...&interval=...&days=...` | OHLCV candles |
-| `GET /api/auth/status` | Login status + market clock |
+| `GET /api/auth/status` | Login status + market clock + compute device |
 | `POST /api/auth/login` | Daily TOTP login |
-| `POST /api/kronos/forecast` | Run the GPU forecast on current candles |
+| `POST /api/kronos/forecast` | Run the forecast on current candles |
 | `WS /ws?symbol=...` | Live tick stream |
 
 ---
@@ -312,9 +323,9 @@ All endpoints are on `http://localhost:81`:
 
 | Problem | Fix |
 |---|---|
-| `CUDA available: False` | Driver too old/missing — redo Step 2 and `sudo reboot` |
-| `Kronos inference is GPU-only...` at startup | CPU torch wheel installed — redo the `pip install torch --index-url .../cu128` step |
-| `Could not import torch` | Same CUDA-wheel install command |
+| `Could not import torch` | `pip install torch` (plain, CPU) — or the CUDA build in Step 4B |
+| Forecast slower than expected | CPU inference is normal — optional CUDA wheel (Step 4B) is ~2–5× faster |
+| `CUDA available: False` but you have a GPU | Driver too old/missing — redo Step 2 and `sudo reboot` |
 | Port 81 busy | Change `TV_PORT` in `.env`, restart |
 | Forecast does nothing | Model weights still downloading on first run (internet + a few minutes) |
 | No candles on chart | Angel session expired — click **Login** in the status bar |

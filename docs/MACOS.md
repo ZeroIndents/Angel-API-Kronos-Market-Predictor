@@ -1,21 +1,29 @@
 # 🍎 Kronos View on macOS — Complete Guide
 
 > Full project documentation for running **Kronos View** (the live AI chart
-> terminal) on macOS. For Windows see [WINDOWS.md](WINDOWS.md), for Linux
-> see [LINUX.md](LINUX.md).
+> terminal) on macOS — **Apple Silicon (M1–M4) and Intel Macs**. For Windows
+> see [WINDOWS.md](WINDOWS.md), for Linux see [LINUX.md](LINUX.md).
 
 ---
 
 ## 1. What this project is
 
-**Kronos View** is a self-hosted **live chart terminal** built around
-NVIDIA's **Kronos** zero-shot financial forecasting model. It shows one chart
-at a time — Nifty 50, NIFTY FUT, or Bank Nifty — streams **live ticks** from
-Angel One SmartAPI, and lets the Kronos model **predict the next 30 candles**
-as a dashed overlay on the chart.
+**Kronos View** is a self-hosted **live chart terminal** built around the
+**Kronos** zero-shot financial forecasting model. It shows one chart at a
+time — Nifty 50, NIFTY FUT, or Bank Nifty — streams **live ticks** from Angel
+One SmartAPI, and lets the Kronos model **predict the next 30 candles** as a
+dashed overlay on the chart.
 
 > ⚠️ **Research / educational demo only — not investment advice.**
 > See `LICENSE` (viewing license, all rights reserved).
+
+### About the AI model
+
+Kronos is an **open-source research model from a Tsinghua University team**
+(Yu Shi, Zongliang Fu, et al.) — *"Kronos: A Foundation Model for the
+Language of Financial Markets"*, [arXiv:2508.02739](https://arxiv.org/abs/2508.02739),
+accepted at **AAAI 2026**. It is **not** an NVIDIA product and does **not**
+require NVIDIA hardware.
 
 ### Feature list
 
@@ -26,8 +34,8 @@ as a dashed overlay on the chart.
 | ⚡ Live feed | Angel One SmartWebSocketV2 ticks folded into the forming candle |
 | 📊 Timeframes | 1m / 5m / 15m / 30m / 1H / 1D |
 | 🗓 Range shortcuts | 1D → 5Y |
-| 🎯 Candle auto-zoom | Chart follows the newest candle; ⟲ / `Alt+R` recentres |
-| 🔍 Symbol search | `Ctrl+K` (⌘+K on macOS) — only the 3 shipped instruments |
+| 🎯 Candle auto-zoom | Chart follows the newest candle; ⟲ / `⌘+R` recentres |
+| 🔍 Symbol search | `⌘+K` — only the 3 shipped instruments |
 | 📸 Screenshot / ⛶ Fullscreen | PNG export, fullscreen mode |
 | 📈 Volume toggle | Candles + volume, or candles only |
 
@@ -47,61 +55,24 @@ server refuses to resolve any other symbol even via hand-crafted API calls.
 
 ---
 
-## 2. ⚠️ macOS + GPU: the one hard requirement
+## 2. 🍎 Which Mac? Compute device auto-detection
 
-**Kronos inference is CUDA-GPU-only. There is deliberately no CPU fallback**
-— `2_kronos_inference.py` exits at import time if CUDA is unavailable.
+Kronos inference runs **on every Mac** — no NVIDIA hardware needed. The
+compute device auto-detects at startup:
 
-CUDA is **NVIDIA-only**, and Apple has not shipped NVIDIA hardware or
-drivers in Macs since ~2013. **Intel/Apple Silicon Macs have AMD or Apple
-GPUs, which CUDA does not run on.** A macOS machine therefore **cannot**
-execute the Kronos forecast locally.
-
-That does **not** mean you can't use Kronos View from a Mac — it means the
-**server must run somewhere with an NVIDIA GPU**, and your Mac uses the web
-UI as a pure client:
-
-```
-┌────────────┐   browser (any Mac)    ┌──────────────────────────────┐
-│ Your Mac    │ ◄──── http://host:81 ──│ Server (NVIDIA GPU machine)  │
-│  = client   │                       │  Windows / Linux / cloud VM  │
-└────────────┘                       └──────────────────────────────┘
-```
-
-The web UI runs in **any modern browser** (Safari, Chrome, Edge, Firefox)
-and needs nothing installed beyond the browser itself.
-
-### Your options
-
-| Option | Description | Doc to follow |
+| Mac | Device | Notes |
 |---|---|---|
-| **1. Run the server on a PC with an NVIDIA GPU** | Simplest. Set up on Windows/Linux (or any NVIDIA box), then open `http://<that-pc-ip>:81` from your Mac. | [WINDOWS.md](WINDOWS.md) or [LINUX.md](LINUX.md) |
-| **2. Rent a cloud GPU VM** | A cloud instance with an NVIDIA GPU (e.g. any major cloud provider) — follow the Linux steps there. | [LINUX.md](LINUX.md) |
-| **3. Run on the Mac, lose the forecast** | The chart/live/history endpoints work without CUDA, but the forecast module **fails at import**, so the server as shipped won't start on a Mac without a code change. This is intentionally unsupported (GPU-only is a deliberate design decision). | — |
+| **Apple Silicon (M1–M4)** | `mps` (Apple GPU) | The default torch wheel uses the Metal/MPS backend automatically — good speed, zero config |
+| **Intel Mac** | `cpu` | Works out of the box; see the torch version note in Step 3 |
 
-> If you choose option 1 or 2, you can stop reading here and set up the
-> server on the GPU machine using the matching guide. The rest of this page
-> documents running the full stack on a Mac **that has no NVIDIA GPU** —
-> i.e. what you *can* do from the Mac side.
+The status bar badges each forecast's device: `Apple`, or `CPU`.
 
----
-
-## 3. What runs on the Mac
-
-Even without a GPU, a Mac is a first-class **client**:
-
-- ✅ Open the chart terminal in any browser
-- ✅ View live ticks, history, all 6 timeframes, volume, screenshots
-- ✅ Use the symbol picker (3 instruments)
-- ❌ Run the Kronos forecast (needs the NVIDIA GPU server)
-
-Everything below assumes you are hosting the **server elsewhere** (option 1
-or 2) and just want to reach it — plus how to install the project on a Mac
-for development/contribution purposes.
+> The models are tiny (4.1M / 24.7M params), so even CPU-only Intel Macs
+> get forecasts in a second or two.
 
 ---
 
-## 4. Project structure
+## 3. Project structure
 
 ```
 Kronos_windows/            (repo is platform-independent — same files on macOS)
@@ -110,7 +81,7 @@ Kronos_windows/            (repo is platform-independent — same files on macOS
 │   ├── index.html          # Single-page chart UI (bare toolbar)
 │   ├── app.js              # Chart application (lightweight-charts v5.2)
 │   └── styles.css          # Dark theme
-├── 2_kronos_inference.py   # GPU inference core — Kronos-mini / Kronos-small ONLY
+├── 2_kronos_inference.py   # Inference core — Kronos-mini / Kronos-small, auto device (MPS/CPU)
 ├── 8_smartapi_auth.py      # Angel One session manager (daily TOTP 2FA login)
 ├── 9_smartapi_fetch.py     # Angel One REST history fetcher
 ├── 10_smartapi_live.py     # Live tick → 5m candle aggregator
@@ -124,91 +95,147 @@ Kronos_windows/            (repo is platform-independent — same files on macOS
 
 ---
 
-## 5. Connecting to a server from your Mac
+## 4. Installation (macOS)
 
-### Find the server's address
+Open **Terminal** and run each block.
 
-On the machine running `server.py`, find its LAN IP:
+### Step 1 — Python
 
-- **Windows:** `ipconfig` → `IPv4 Address`
-- **Linux:** `hostname -I` or `ip addr`
-- **Cloud VM:** its public IP / DNS name
+- **Apple Silicon:** `brew install python@3.11`
+- **Intel Mac:** also `brew install python@3.11` (Homebrew still ships
+  Intel builds on Intel Macs)
 
-The server binds `0.0.0.0:81` by default, so it is reachable on the LAN.
-
-### Open it on the Mac
-
-```text
-http://<SERVER-IP>:81
+```bash
+python3.11 --version
 ```
 
-- Same network only for a LAN box — a cloud VM needs its security group /
-  firewall to allow port 81.
-- If the server runs on this very Mac via a remote/cloud box that forwards
-  the port, `http://localhost:81` also works.
-
-### Bookmark it as an app (optional)
-
-1. Safari → **File → Add to Dock** (or Chrome → *Install as app*)
-2. The terminal then behaves like a desktop app in its own window.
-
----
-
-## 6. Installing the project on a Mac (for development / contribution)
-
-You can check out and run everything *except* the GPU forecast on a Mac.
-
-### Prerequisites
-
-- **Python 3.10–3.12** — use Homebrew: `brew install python@3.11`
-  (macOS system Python is too old; the Xcode CLT Python is for Apple's use)
-- **Git** — `xcode-select --install` or `brew install git`
-
-### Step 1 — Clone & venv
+### Step 2 — Clone the project + the Kronos model repo
 
 ```bash
 git clone https://github.com/<owner>/Kronos_windows.git
 cd Kronos_windows
-python3.11 -m venv .venv
-source .venv/bin/activate
+
+# Kronos model codebase is imported at runtime — clone it NEXT to this folder
+git clone https://github.com/shiyu-coder/Kronos
 ```
 
-### Step 2 — Install dependencies
+### Step 3 — Create the venv & install dependencies
 
 ```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
 pip install --upgrade pip
+```
+
+**Intel Macs — one extra step.** Newer torch dropped Intel (x86_64) macOS
+wheels. Install the last Intel build first, then the requirements:
+
+```bash
+# Intel Mac only:
+pip install torch==2.2.2
+
+# All Macs:
 pip install -r requirements.txt
 ```
 
-> **Skip the CUDA torch step on macOS** — there is no CUDA wheel for macOS
-> and `pip install torch` on a Mac installs the **CPU build**, which the
-> project deliberately refuses to use. (For reference: on Linux/Windows you
-> must install the CUDA build *instead* — see those platform guides.)
+Apple Silicon can skip the torch line — the default wheel uses MPS.
 
-### Step 3 — Configure credentials (for data access)
+### Step 4 — Configure Angel One credentials
 
 ```bash
 cp .env.example .env
-nano .env          # fill API_KEY, CLIENT_ID, PIN, TOTP_SECRET
+nano .env
 ```
 
-See [WINDOWS.md §4 Step 6](WINDOWS.md) for where each value comes from —
-the process is identical.
+| Variable | Where to get it |
+|---|---|
+| `API_KEY` | smartapi.angelbroking.com → My Profile → **API** tab (create an app) |
+| `CLIENT_ID` | Your Angel One client code (trading account user ID) |
+| `PIN` | Your 4-digit trading PIN |
+| `TOTP_SECRET` | Base32 secret from the Angel One TOTP in Google Authenticator *(optional — otherwise you type a 2FA code daily)* |
+| `TV_PORT` / `TV_HOST` | Defaults `81` / `0.0.0.0` — fine as-is |
 
-### Step 4 — What you can run without a GPU
+> 🔐 `.env`, `smartapi_config.json`, `smartapi_tokens.json` are **git-ignored**.
 
-| Command | Works on Mac? | Notes |
-|---|---|---|
-| `python 8_smartapi_auth.py --status / --login` | ✅ | Angel One session management is pure HTTP — no GPU needed |
-| `python 9_smartapi_fetch.py --days 30 --asset nifty` | ✅ | Historical candles to CSV |
-| `python 16_market_universe.py --search "nifty"` | ✅ | Downloads the scrip master (~34 MB) |
-| `python 10_smartapi_live.py --minutes 30` | ✅ | Live tick capture to CSV |
-| `python server.py` | ❌ | Fails at import: **"Kronos inference is GPU-only and no CUDA GPU is available"** |
-| `python 2_kronos_inference.py` | ❌ | Same GPU gate |
+### Step 5 — Log in to Angel One (once per trading day)
 
-So on a Mac you can fully develop the data + UI layers, but the server as
-shipped will not boot — that is by design (GPU-only). To see the full app,
-point the server at an NVIDIA machine as described in §2/§5.
+```bash
+python 8_smartapi_auth.py --login
+```
+
+Prompts for the 6-digit TOTP (or uses `TOTP_SECRET` automatically). The
+in-app **Login** button does the same thing.
+
+---
+
+## 5. Running the terminal
+
+```bash
+source .venv/bin/activate
+python server.py
+```
+
+Then open **http://localhost:81** — or `http://<YOUR-MAC-IP>:81` from any
+device on the network. `Ctrl+C` stops it.
+
+On boot the server starts a background CSV recorder and warms the model on
+the active device (MPS or CPU) so the first forecast is instant.
+
+### First forecast
+
+1. Pick a symbol (default `Nifty 50`) and timeframe.
+2. Click **🔮 Forecast** — the model draws the dashed path.
+3. Toggle **Auto** to re-run on every candle close. Check the status bar for
+   the device badge (`Apple` on Apple Silicon, `CPU` on Intel).
+
+### Auto-start at login (optional)
+
+Create `~/Library/LaunchAgents/com.kronos.view.plist`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.kronos.view</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/USER/Kronos_windows/.venv/bin/python</string>
+    <string>/Users/USER/Kronos_windows/server.py</string>
+  </array>
+  <key>WorkingDirectory</key><string>/Users/USER/Kronos_windows</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/tmp/kronos-view.log</string>
+  <key>StandardErrorPath</key><string>/tmp/kronos-view.err</string>
+</dict>
+</plist>
+```
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.kronos.view.plist
+```
+
+(Replace `USER` with your username.)
+
+---
+
+## 6. Using the API directly
+
+All endpoints are on `http://localhost:81`:
+
+| Method / path | Purpose |
+|---|---|
+| `GET /` | Chart UI |
+| `GET /api/symbols` | The 3 allowed instruments |
+| `GET /api/search?q=...` | Search — returns only the 3 instruments |
+| `GET /api/ltp?symbol=...` | Last traded price |
+| `GET /api/history?symbol=...&interval=...&days=...` | OHLCV candles |
+| `GET /api/auth/status` | Login status + market clock + compute device |
+| `POST /api/auth/login` | Daily TOTP login |
+| `POST /api/kronos/forecast` | Run the forecast on current candles |
+| `WS /ws?symbol=...` | Live tick stream |
 
 ---
 
@@ -216,12 +243,13 @@ point the server at an NVIDIA machine as described in §2/§5.
 
 | Problem | Fix |
 |---|---|
-| `Kronos inference is GPU-only...` | Expected on a Mac — run the server on an NVIDIA machine (see §2) |
+| `pip install torch==2.2.2` fails on Intel Mac | Very old macOS? torch 2.2.2 needs macOS 10.15+; if that fails, `pip install torch==2.1.2` |
+| Forecast badges `CPU` on Apple Silicon | MPS wasn't detected — `pip install --upgrade torch` and ensure you're on an arm64 Python (`python3.11 -c "import platform; print(platform.machine())"` should print `arm64`) |
 | `python: command not found` | `brew install python@3.11` |
-| `pip: command not found` | `python3.11 -m pip --version`; install with `python3.11 -m ensurepip` |
-| Port 81 busy | Change `TV_PORT` in `.env` on the *server* machine |
-| Can't reach `http://<server-ip>:81` | Same LAN? Firewall on the server allow port 81? (Windows: allow in Firewall; cloud: open the security group) |
-| No candles on chart | Angel session expired — click **Login** in the status bar (server machine) |
+| `pip: command not found` | `python3.11 -m pip --version`; fix with `python3.11 -m ensurepip` |
+| Port 81 busy | Change `TV_PORT` in `.env`, restart |
+| Can't reach `http://<mac-ip>:81` from another device | macOS firewall: System Settings → Network → Firewall → allow Python |
+| No candles on chart | Angel session expired — click **Login** in the status bar |
 | Slow first forecast | Model weights download from Hugging Face on first run — needs internet + a few minutes |
 
 ---

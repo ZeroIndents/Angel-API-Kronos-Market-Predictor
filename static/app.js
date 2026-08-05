@@ -380,7 +380,7 @@
     this.crosshairOn = true;           // crosshair lines
     this._haTail = null;   // last Heikin-Ashi candle (incremental live transform)
     this._haPrev = null;   // HA candle before the tail (for in-place refreshes)
-    this.model = 'Kronos-small';   // GPU-only default (public build: mini + small only)
+    this.model = 'Kronos-small';   // default (public build: mini + small only; runs on CUDA GPU, Apple MPS, or CPU)
     this.volProfile = false;          // volume-at-price overlay (right-click toggle)
     this._volProfileBins = null;      // computed profile for the visible window
     this._lastView = null;            // last good visible range (persisted view)

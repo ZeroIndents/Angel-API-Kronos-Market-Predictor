@@ -8,11 +8,11 @@
 
 ## 1. What this project is
 
-**Kronos View** is a self-hosted **live chart terminal** built around
-NVIDIA's **Kronos** zero-shot financial forecasting model. It shows you one
-chart at a time — Nifty 50, NIFTY FUT, or Bank Nifty — streams **live ticks**
-from Angel One SmartAPI, and lets the Kronos model **predict the next 30
-candles** as a dashed overlay on the chart.
+**Kronos View** is a self-hosted **live chart terminal** built around the
+**Kronos** zero-shot financial forecasting model. It shows you one chart at a
+time — Nifty 50, NIFTY FUT, or Bank Nifty — streams **live ticks** from Angel
+One SmartAPI, and lets the Kronos model **predict the next 30 candles** as a
+dashed overlay on the chart.
 
 It is deliberately **bare**: no drawing tools, no indicator library, no
 multi-pane layouts, no alerts, no news panel. One chart, live data, AI
@@ -20,6 +20,14 @@ forecast. Nothing else.
 
 > ⚠️ **Research / educational demo only — not investment advice.**
 > See `LICENSE` (viewing license, all rights reserved).
+
+### About the AI model
+
+Kronos is an **open-source research model from a Tsinghua University team**
+(Yu Shi, Zongliang Fu, et al.) — *"Kronos: A Foundation Model for the
+Language of Financial Markets"*, [arXiv:2508.02739](https://arxiv.org/abs/2508.02739),
+accepted at **AAAI 2026**. It is **not** an NVIDIA product. NVIDIA's only
+connection is that the authors trained on RTX 4090D GPUs.
 
 ### Feature list
 
@@ -57,16 +65,15 @@ server refuses to resolve any other symbol even via hand-crafted API calls.
 
 | Requirement | Notes |
 |---|---|
-| **NVIDIA GPU with CUDA** | Kronos inference is **GPU-only** — there is deliberately no CPU fallback. Any CUDA-capable GPU works (the models are tiny: 4.1M / 24.7M params). |
-| **NVIDIA driver** | Supports CUDA 12.8. Verify with `nvidia-smi` in PowerShell. |
 | **Python 3.10 – 3.12 (64-bit)** | Install from [python.org](https://www.python.org/downloads/) — **tick "Add python.exe to PATH"** during install. The project was developed on Python 3.10. |
-| **~2 GB free disk** | venv + PyTorch CUDA wheels (~2.5 GB with torch) |
+| **~2 GB free disk** | venv + PyTorch wheels |
 | **Internet** | First run: downloads the Angel One scrip master (~34 MB) and the Kronos model weights from Hugging Face |
 
 ### Optional
 
 | Item | Why |
 |---|---|
+| **NVIDIA GPU + driver** | Optional **speedup** — the forecast runs fine on CPU too. If you have one, install the CUDA torch wheel (Step 3B). The models are tiny (4.1M / 24.7M params), so CPU forecasts are quick. |
 | `git` | Only needed to clone the Kronos model repo |
 | Visual Studio Build Tools | Only if a dependency needs compiling (rare with the wheels below) |
 
@@ -81,7 +88,7 @@ Kronos_windows/
 │   ├── index.html          # Single-page chart UI (bare toolbar)
 │   ├── app.js              # Chart application (lightweight-charts v5.2)
 │   └── styles.css          # Dark theme
-├── 2_kronos_inference.py   # GPU inference core — Kronos-mini / Kronos-small ONLY
+├── 2_kronos_inference.py   # Inference core — Kronos-mini / Kronos-small, auto device (CUDA/CPU)
 ├── 8_smartapi_auth.py      # Angel One session manager (daily TOTP 2FA login)
 ├── 9_smartapi_fetch.py     # Angel One REST history fetcher
 ├── 10_smartapi_live.py     # Live tick → 5m candle aggregator
@@ -108,8 +115,8 @@ Kronos_windows/
                        │              │              │
               ┌────────▼───┐  ┌───────▼──────┐  ┌────▼────────────┐
               │ 9_smartapi │  │ 10_smartapi  │  │ 2_kronos_infer  │
-              │ _fetch.py  │  │ _live.py     │  │ ence.py (GPU)   │
-              │ (history)  │  │ (live ticks) │  │ (forecast)      │
+              │ _fetch.py  │  │ _live.py     │  │ ence.py         │
+              │ (history)  │  │ (live ticks) │  │ (CPU or CUDA)   │
               └──────┬─────┘  └──────┬───────┘  └────┬────────────┘
                      │               │               │
               ┌──────▼───────────────▼──────┐  ┌────▼────────────┐
@@ -125,9 +132,9 @@ Data flow:
 2. **Live** — the server keeps **one shared** SmartWebSocketV2 connection
    and forwards every tick to the browser over its own `/ws`, where the UI
    folds it into the forming candle.
-3. **Forecast** — `/api/kronos/forecast` runs the GPU Kronos model on the
-   current candles and returns a predicted path the UI draws as a dashed
-   line.
+3. **Forecast** — `/api/kronos/forecast` runs the Kronos model (CUDA GPU if
+   detected, otherwise CPU) on the current candles and returns a predicted
+   path the UI draws as a dashed line.
 
 ---
 
@@ -154,12 +161,20 @@ py -m venv .venv
 
 ### Step 3 — Install dependencies
 
-**Important:** install the CUDA build of PyTorch **first** — a plain
-`pip install torch` on Windows pulls the CPU-only wheel, and Kronos will
-fail at startup.
+The device auto-detects (CUDA GPU → CPU), so **option A works on every
+machine** — even without an NVIDIA GPU.
 
 ```powershell
 .venv\Scripts\python.exe -m pip install --upgrade pip
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+#### Step 3B (optional) — NVIDIA GPU speedup
+
+Only if you have an NVIDIA GPU and want faster forecasts: install the CUDA
+build of torch **before** the requirements line:
+
+```powershell
 .venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cu128
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
@@ -167,19 +182,19 @@ fail at startup.
 > `cu128` = CUDA 12.8. If your driver is older, pick the matching index URL
 > (e.g. `cu121`, `cu124`) from [pytorch.org/get-started](https://pytorch.org/get-started/locally/).
 
-### Step 4 — Verify the GPU works
+### Step 4 — Verify (optional, GPU machines)
 
 ```powershell
 .venv\Scripts\python.exe -c "import torch; print('CUDA available:', torch.cuda.is_available())"
 ```
 
-Must print `CUDA available: True`. If it prints `False`, the driver is too
-old or missing — update it from NVIDIA's site and reboot.
+`True` → the server will badge forecasts `⚡GPU`. `False` → no problem, it
+runs on CPU and badges them `CPU`.
 
 ### Step 5 — Clone the Kronos model repo
 
-The server imports NVIDIA's Kronos codebase at runtime. Clone it **next to
-this folder** (or set `KRONOS_REPO_DIR` to point at your clone):
+The server imports the Kronos codebase at runtime. Clone it **next to this
+folder** (or set `KRONOS_REPO_DIR` to point at your clone):
 
 ```powershell
 git clone https://github.com/shiyu-coder/Kronos
@@ -232,8 +247,9 @@ Then open **http://localhost:81** in your browser.
 
 - Other devices on your network: `http://<YOUR-PC-IP>:81`
 - `Ctrl+C` stops the server.
-- On boot the server starts a background CSV recorder and warms the GPU
-  (preloads the model + one tiny forecast) so your first click is instant.
+- On boot the server starts a background CSV recorder and warms the model
+  (preloads it + one tiny forecast) so your first click is instant. The
+  status bar shows the device: `⚡GPU`, or `CPU`.
 
 ### First forecast
 
@@ -254,9 +270,9 @@ All endpoints are on `http://localhost:81`:
 | `GET /api/search?q=...` | Search — returns only the 3 instruments |
 | `GET /api/ltp?symbol=...` | Last traded price |
 | `GET /api/history?symbol=...&interval=...&days=...` | OHLCV candles |
-| `GET /api/auth/status` | Login status + market clock |
+| `GET /api/auth/status` | Login status + market clock + compute device |
 | `POST /api/auth/login` | Daily TOTP login |
-| `POST /api/kronos/forecast` | Run the GPU forecast on current candles |
+| `POST /api/kronos/forecast` | Run the forecast on current candles |
 | `WS /ws?symbol=...` | Live tick stream |
 
 ---
@@ -265,9 +281,9 @@ All endpoints are on `http://localhost:81`:
 
 | Problem | Fix |
 |---|---|
-| `CUDA available: False` | Update NVIDIA driver (≥ CUDA 12.8 capable), reboot, recheck Step 4 |
-| `Kronos inference is GPU-only...` at startup | You installed the CPU torch wheel — redo Step 3's `pip install torch --index-url .../cu128` |
-| `Could not import torch` | `pip install torch --index-url https://download.pytorch.org/whl/cu128` |
+| `Could not import torch` | `pip install torch` (plain, CPU) — or the CUDA build in Step 3B |
+| Forecast is slower than expected | That's CPU inference — optional CUDA wheel (Step 3B) makes it ~2–5× faster |
+| `CUDA available: False` but you have a GPU | Update NVIDIA driver, reboot, redo Step 3B |
 | Port 81 busy | Change `TV_PORT` in `.env`, restart |
 | Forecast button does nothing | Check the console: model weights may still be downloading on first run (needs internet + a few minutes) |
 | No candles on chart | Angel session expired — press **Login** in the status bar (or run Step 7) |

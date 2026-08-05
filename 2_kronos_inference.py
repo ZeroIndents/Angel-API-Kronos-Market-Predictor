@@ -1,8 +1,10 @@
 """
 2_kronos_inference.py
 =====================
-Run zero-shot forecasting with NVIDIA's open-source **Kronos** financial
-foundation model on the clean 5-minute CSVs produced by ``1_fetch_data.py``.
+Run zero-shot forecasting with the **Kronos** financial foundation model
+(*"Kronos: A Foundation Model for the Language of Financial Markets"*,
+Tsinghua University research team, arXiv:2508.02739, accepted at AAAI 2026)
+on the clean 5-minute CSVs produced by ``1_fetch_data.py``.
 
 The script works with *both* generations of the Kronos codebase and picks
 the right API automatically:
@@ -79,28 +81,32 @@ except ImportError as exc:  # pragma: no cover - environment setup issue
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-# GPU-ONLY: Kronos inference MUST run on the CUDA GPU. There is deliberately
-# NO CPU fallback - if CUDA is not visible the process fails loudly at import
-# instead of silently degrading (a silent CPU run is exactly how stale,
-# misleading forecasts crept in before). Every consumer (dashboard, Live AI,
-# Simulation, FastAPI, MCP, TV viewer) reads this single DEVICE constant, so
-# the GPU switch happens in exactly one place and can never be bypassed.
+# Compute-device auto-detection: CUDA GPU when available, Apple Silicon MPS
+# next, plain CPU everywhere else (including Intel Macs and CPU-only boxes).
+# The Kronos models are tiny (4.1M / 24.7M params) and run comfortably on
+# CPU - a GPU only makes forecasts faster. Every consumer (dashboard, Live
+# AI, Simulation, FastAPI, MCP, TV viewer) reads this single DEVICE constant,
+# so the compute backend switches in exactly one place.
 try:
     import torch as _torch
 except ImportError as exc:       # pragma: no cover - torch is always installed
     raise RuntimeError(
         "PyTorch is required for Kronos inference but could not be imported. "
-        "Install the CUDA build: pip install torch --index-url "
-        "https://download.pytorch.org/whl/cu128"
+        "Install it with: pip install torch   (Windows/Linux NVIDIA-GPU users: "
+        "see requirements.txt for the faster CUDA wheel index URL)."
     ) from exc
 
-if not _torch.cuda.is_available():
-    raise RuntimeError(
-        "Kronos inference is GPU-only and no CUDA GPU is available in this "
-        "process. Check `nvidia-smi` and restart the app on the GPU machine."
-    )
+if _torch.cuda.is_available():
+    DEVICE = "cuda"
+elif (getattr(getattr(_torch, "backends", None), "mps", None) is not None
+        and _torch.backends.mps.is_available()):
+    DEVICE = "mps"          # Apple Silicon (M1/M2/M3/M4)
+else:
+    DEVICE = "cpu"          # no CUDA GPU - Intel Macs and CPU-only machines
 
-DEVICE = "cuda"
+# Human-readable label for the UI badge ("GPU" vs "CPU" vs "Apple GPU").
+def device_label(device: str = DEVICE) -> str:
+    return "GPU" if device == "cuda" else ("Apple" if device == "mps" else "CPU")
 
 # Model -> tokenizer -> context-length mapping from the official model zoo.
 # Public build: Kronos-mini + Kronos-small only (Kronos-base is not shipped).
@@ -134,10 +140,9 @@ def load_predictor(
     device: str = DEVICE,
     max_context: int | None = None,
 ) -> KronosPredictor:
-    """Load a ``KronosPredictor`` on the GPU (CUDA only) and cache it
-    in-process.
+    """Load a ``KronosPredictor`` on the detected compute device
+    (``cuda`` / ``mps`` / ``cpu``) and cache it in-process.
 
-    CPU execution has been removed - ``device`` must be ``"cuda"``.
     Supports both the current ``shiyu-coder/Kronos`` API and the legacy
     tutorial-era API (``KronosPredictor.from_pretrained``).
     """
@@ -145,11 +150,8 @@ def load_predictor(
         raise ValueError(
             f"Unknown model '{model_name}'. Choose from {list(MODEL_OPTIONS)}."
         )
-    if device != "cuda":
-        raise ValueError(
-            f"Kronos inference is GPU-only - device '{device}' is not allowed "
-            "(CPU execution has been removed)."
-        )
+    if device not in ("cuda", "mps", "cpu"):
+        raise ValueError(f"Unknown device '{device}' - choose cuda, mps or cpu.")
     cfg = MODEL_OPTIONS[model_name]
     max_context = max_context or cfg["max_context"]
 
@@ -175,15 +177,15 @@ def load_predictor(
 
     _PREDICTOR_CACHE[cache_key] = predictor
 
-    # Cap torch's worker threads so a single inference cannot grab every
-    # core: the Streamlit app and the :8081 viewer each run their own copy of
-    # this loader, and concurrent unthrottled inferences (one browser pane
-    # per device) thrash the CPU and starve the UI. The GPU does the heavy
-    # lifting, so 4 threads is ample for data prep / tokenization.
+    # Torch thread tuning: on a GPU the model does the heavy lifting, so a
+    # small pool (4) is ample for data prep / tokenization and keeps the UI
+    # responsive. On CPU the model itself is the heavy lift, so use more of
+    # the cores (capped at 8 so a concurrent inference never freezes the box).
     try:
         import torch as _torch
-        _target = max(1, min(4, int(os.cpu_count() or 4)))
-        if _torch.get_num_threads() > _target:
+        _target = (max(2, min(int(os.cpu_count() or 4), 8)) if device == "cpu"
+                   else max(1, min(4, int(os.cpu_count() or 4))))
+        if _torch.get_num_threads() != _target:
             _torch.set_num_threads(_target)
     except Exception:
         pass
@@ -444,11 +446,8 @@ def generate_forecast(
         raise ValueError(
             f"Unknown model '{model_name}'. Choose from {list(MODEL_OPTIONS)}."
         )
-    if device != "cuda":
-        raise ValueError(
-            f"Kronos inference is GPU-only - device '{device}' is not allowed "
-            "(CPU execution has been removed)."
-        )
+    if device not in ("cuda", "mps", "cpu"):
+        raise ValueError(f"Unknown device '{device}' - choose cuda, mps or cpu.")
 
     df = load_csv(csv_path)
     if end_ts is not None:

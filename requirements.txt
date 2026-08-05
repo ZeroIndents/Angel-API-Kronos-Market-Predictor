@@ -22,11 +22,17 @@ pyotp>=2.10             # TOTP generation for the daily 2FA login
 logzero>=1.7            # smartapi-python dependency
 websocket-client>=1.8   # SmartWebSocketV2 dependency
 
-# --- Kronos GPU inference (2_kronos_inference.py) ----------------------------
-# Windows: plain `pip install torch` pulls the CPU wheel - NOT usable. Install
-# the CUDA build instead:
-#   pip install torch --index-url https://download.pytorch.org/whl/cu128
-torch>=2.9
+# --- Kronos inference (2_kronos_inference.py) -------------------------------
+# Device is auto-detected: CUDA GPU -> Apple Silicon MPS -> CPU. A plain
+# `pip install torch` works everywhere (CPU/MPS wheels are the defaults).
+#   * NVIDIA GPU (Windows/Linux) - OPTIONAL speedup, install the CUDA build
+#     BEFORE the requirements line below:
+#       pip install torch --index-url https://download.pytorch.org/whl/cu128
+#   * Intel Macs - install the last macOS-x86_64 wheel (newer torch dropped
+#     Intel macOS builds):
+#       pip install torch==2.2.2
+#   * Apple Silicon - the default wheel auto-uses the MPS backend.
+torch>=2.2
 huggingface_hub==0.33.1 # pinned by the Kronos repo
 einops==0.8.1
 safetensors>=0.6.2

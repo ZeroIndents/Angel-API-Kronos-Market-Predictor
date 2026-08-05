@@ -39,9 +39,10 @@ Data flow
   pattern. A single socket means we never trip Angel's concurrent-connection
   limit (which previously 429'd the feed). With the market closed the
   socket stays connected and idles until ticks arrive on the next session.
-* **Kronos** — ``POST /api/kronos/forecast`` runs the local NVIDIA Kronos
-  model on the current candles and returns a forecast path the UI draws as
-  a dashed line series over the chart.
+* **Kronos** — ``POST /api/kronos/forecast`` runs the local Kronos
+  foundation model (Tsinghua University, arXiv:2508.02739) on the current
+  candles and returns a forecast path the UI draws as a dashed line series
+  over the chart.
 
 Run
 ---
@@ -186,8 +187,8 @@ app = FastAPI(
     title="Kronos View",
     description=(
         "Live chart viewer for the Kronos AI forecasting platform: Angel One "
-        "SmartAPI history + live ticks and the local NVIDIA Kronos forecast "
-        "overlay. Research use only."
+        "SmartAPI history + live ticks and the local Kronos forecast overlay "
+        "(Tsinghua University, arXiv:2508.02739). Research use only."
     ),
     version="1.0.0-public",
 )
@@ -1208,10 +1209,10 @@ def auth_status() -> dict:
     is_open, market_label = live_mod.market_status()
     st["market_open"] = is_open
     st["market_label"] = market_label
-    # Which compute device Kronos inference actually runs on - always 'cuda'
-    # in this build (CPU was removed), surfaced so the UI can badge it.
+    # Which compute device Kronos inference actually runs on (cuda / mps /
+    # cpu - auto-detected at import), surfaced so the UI can badge it.
     st["device"] = infer_mod.DEVICE
-    st["gpu"] = infer_mod.DEVICE == "cuda"
+    st["gpu"] = infer_mod.DEVICE != "cpu"
     return st
 
 
@@ -1359,7 +1360,7 @@ def kronos_forecast(req: KronosRequest) -> dict:
         # predictor, and torch forwards on it are always serialized.
         with _FORECAST_INFER_LOCK:
             if req.model not in _predictor_cache:
-                # GPU-only: follow the shared DEVICE constant (always 'cuda').
+                # Follow the shared DEVICE constant (cuda / mps / cpu).
                 _predictor_cache[req.model] = infer_mod.load_predictor(
                     model_name=req.model, device=infer_mod.DEVICE
                 )
@@ -1639,17 +1640,17 @@ def _start_recorder() -> None:
 
     threading.Thread(target=loop, daemon=True, name="csv-recorder").start()
 
-def _warm_gpu() -> None:
-    """Preload the default Kronos model on the GPU and run one tiny forecast
-    on cached candles at boot, so the first real user forecast is instant:
-    the CUDA context, cuDNN heuristics and model weights are already
-    resident before anyone opens the page. Fully best-effort - a failure
-    (empty cache, first-ever model download) just means the first request
-    pays the load."""
+def _warm_model() -> None:
+    """Preload the default Kronos model on the active compute device and run
+    one tiny forecast on cached candles at boot, so the first real user
+    forecast is instant: the device context, kernels and model weights are
+    already resident before anyone opens the page. Fully best-effort - a
+    failure (empty cache, first-ever model download) just means the first
+    request pays the load."""
     try:
         fname = PROJECT_DIR / CSV_FALLBACK.get("Nifty 50", "nifty50_smartapi_5m.csv")
         if not fname.is_file():
-            print("[gpu-warmup] no cached CSV - skipping (first forecast will load)")
+            print("[warmup] no cached CSV - skipping (first forecast will load)")
             return
         with _FORECAST_INFER_LOCK:
             if infer_mod.DEFAULT_MODEL not in _predictor_cache:
@@ -1667,10 +1668,11 @@ def _warm_gpu() -> None:
                 top_p=0.9,
                 sample_count=1,
             )
-        print(f"[gpu-warmup] GPU warm: Kronos {infer_mod.DEFAULT_MODEL} ready "
-              f"({infer_mod.DEVICE}) - first forecast is instant")
+        print(f"[warmup] {infer_mod.device_label()} warm: Kronos "
+              f"{infer_mod.DEFAULT_MODEL} ready ({infer_mod.DEVICE}) - "
+              f"first forecast is instant")
     except Exception as exc:
-        print(f"[gpu-warmup] skipped ({exc}) - first forecast will warm the model")
+        print(f"[warmup] skipped ({exc}) - first forecast will warm the model")
 
 
 if __name__ == "__main__":
@@ -1685,6 +1687,6 @@ if __name__ == "__main__":
         port = 81
     host = env.get("TV_HOST", "0.0.0.0")
     _start_recorder()   # background CSV recorder (independent of browser clients)
-    # Warm the GPU in the background (see _warm_gpu) - never blocks startup.
-    threading.Thread(target=_warm_gpu, daemon=True, name="gpu-warmup").start()
+    # Warm the model in the background (see _warm_model) - never blocks startup.
+    threading.Thread(target=_warm_model, daemon=True, name="model-warmup").start()
     uvicorn.run(app, host=host, port=port, log_level="info")
