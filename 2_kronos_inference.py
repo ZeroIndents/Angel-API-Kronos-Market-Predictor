@@ -81,32 +81,23 @@ except ImportError as exc:  # pragma: no cover - environment setup issue
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-# Compute-device auto-detection: CUDA GPU when available, Apple Silicon MPS
-# next, plain CPU everywhere else (including Intel Macs and CPU-only boxes).
+# CPU-only build: this public build runs inference on CPU exclusively.
 # The Kronos models are tiny (4.1M / 24.7M params) and run comfortably on
-# CPU - a GPU only makes forecasts faster. Every consumer (dashboard, Live
-# AI, Simulation, FastAPI, MCP, TV viewer) reads this single DEVICE constant,
-# so the compute backend switches in exactly one place.
+# CPU — no GPU required. This keeps the project accessible to everyone
+# (Intel Macs, AMD GPUs, laptop CPUs, cloud free tiers).
 try:
     import torch as _torch
-except ImportError as exc:       # pragma: no cover - torch is always installed
+except ImportError as exc:
     raise RuntimeError(
         "PyTorch is required for Kronos inference but could not be imported. "
-        "Install it with: pip install torch   (Windows/Linux NVIDIA-GPU users: "
-        "see requirements.txt for the faster CUDA wheel index URL)."
+        "Install it with: pip install torch"
     ) from exc
 
-if _torch.cuda.is_available():
-    DEVICE = "cuda"
-elif (getattr(getattr(_torch, "backends", None), "mps", None) is not None
-        and _torch.backends.mps.is_available()):
-    DEVICE = "mps"          # Apple Silicon (M1/M2/M3/M4)
-else:
-    DEVICE = "cpu"          # no CUDA GPU - Intel Macs and CPU-only machines
+DEVICE = "cpu"
 
-# Human-readable label for the UI badge ("GPU" vs "CPU" vs "Apple GPU").
+# Human-readable label for the UI badge.
 def device_label(device: str = DEVICE) -> str:
-    return "GPU" if device == "cuda" else ("Apple" if device == "mps" else "CPU")
+    return "CPU"
 
 # Model -> tokenizer -> context-length mapping from the official model zoo.
 # Public build: Kronos-mini + Kronos-small only (Kronos-base is not shipped).
@@ -150,8 +141,6 @@ def load_predictor(
         raise ValueError(
             f"Unknown model '{model_name}'. Choose from {list(MODEL_OPTIONS)}."
         )
-    if device not in ("cuda", "mps", "cpu"):
-        raise ValueError(f"Unknown device '{device}' - choose cuda, mps or cpu.")
     cfg = MODEL_OPTIONS[model_name]
     max_context = max_context or cfg["max_context"]
 
@@ -177,33 +166,14 @@ def load_predictor(
 
     _PREDICTOR_CACHE[cache_key] = predictor
 
-    # Torch thread tuning: on a GPU the model does the heavy lifting, so a
-    # small pool (4) is ample for data prep / tokenization and keeps the UI
-    # responsive. On CPU the model itself is the heavy lift, so use more of
-    # the cores (capped at 8 so a concurrent inference never freezes the box).
+    # CPU thread tuning: use enough cores to keep the UI responsive but
+    # cap at 8 so concurrent inferences don't freeze the machine.
     try:
-        import torch as _torch
-        _target = (max(2, min(int(os.cpu_count() or 4), 8)) if device == "cpu"
-                   else max(1, min(4, int(os.cpu_count() or 4))))
+        _target = max(2, min(int(os.cpu_count() or 4), 8))
         if _torch.get_num_threads() != _target:
             _torch.set_num_threads(_target)
     except Exception:
         pass
-
-    # GPU micro-optimisations: allow TF32 matmuls on Ampere+ so the model's
-    # linear layers run noticeably faster with negligible accuracy impact,
-    # and let cuDNN autotune once per tensor shape (then reuse the fastest
-    # kernel) instead of re-benchmarking on every forecast. The model is
-    # transformer-only so the benchmark flag mostly matters for the warm-up
-    # pass - the real latency win comes from the boot warm-up keeping the
-    # CUDA context + weights resident.
-    if device == "cuda":
-        try:
-            import torch as _torch
-            _torch.set_float32_matmul_precision("high")
-            _torch.backends.cudnn.benchmark = True
-        except Exception:
-            pass
 
     return predictor
 
@@ -360,18 +330,6 @@ def _run_predict(
                 return result[0]
             return result
 
-    if device == "cuda":
-        # Mixed-precision inference on the GPU: autocast keeps the heavy
-        # matmuls in fp16 (~2x faster, roughly half the VRAM of fp32) and
-        # falls back to fp32 *on the GPU* if anything is autocast-incompatible.
-        try:
-            import torch as _torch
-            with _torch.autocast(device_type="cuda", dtype=_torch.float16):
-                return _call()
-        except Exception as exc:
-            logger.warning(
-                "GPU fp16 inference failed (%s) - retrying in fp32 on the GPU", exc
-            )
     return _call()
 
 
@@ -446,9 +404,6 @@ def generate_forecast(
         raise ValueError(
             f"Unknown model '{model_name}'. Choose from {list(MODEL_OPTIONS)}."
         )
-    if device not in ("cuda", "mps", "cpu"):
-        raise ValueError(f"Unknown device '{device}' - choose cuda, mps or cpu.")
-
     df = load_csv(csv_path)
     if end_ts is not None:
         end_ts = pd.Timestamp(end_ts)

@@ -23,15 +23,9 @@ logzero>=1.7            # smartapi-python dependency
 websocket-client>=1.8   # SmartWebSocketV2 dependency
 
 # --- Kronos inference (2_kronos_inference.py) -------------------------------
-# Device is auto-detected: CUDA GPU -> Apple Silicon MPS -> CPU. A plain
-# `pip install torch` works everywhere (CPU/MPS wheels are the defaults).
-#   * NVIDIA GPU (Windows/Linux) - OPTIONAL speedup, install the CUDA build
-#     BEFORE the requirements line below:
-#       pip install torch --index-url https://download.pytorch.org/whl/cu128
-#   * Intel Macs - install the last macOS-x86_64 wheel (newer torch dropped
-#     Intel macOS builds):
-#       pip install torch==2.2.2
-#   * Apple Silicon - the default wheel auto-uses the MPS backend.
+# CPU-only build: runs on ANY machine — no GPU required.
+# The Kronos models are tiny (4.1M / 24.7M params) and run on CPU in
+# seconds. Install the default (CPU) PyTorch wheel:
 torch>=2.2
 huggingface_hub==0.33.1 # pinned by the Kronos repo
 einops==0.8.1

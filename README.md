@@ -41,22 +41,18 @@ just the forecast.
 
 ## Models & compute
 
-Two Kronos variants are supported, and the compute device is **auto-detected**:
+**CPU-only build — runs on ANY machine, no GPU required.**
 
-| Model | Params | Max context |
-|---|---|---|
-| `Kronos-mini` | 4.1M | 2048 |
-| `Kronos-small` (default) | 24.7M | 512 |
+Two Kronos variants are supported:
 
-The device auto-detects at startup in this order:
+| Model | Params | Max context | CPU Speed |
+|---|---|---|---|
+| `Kronos-mini` | 4.1M | 2048 | ~1-2s per forecast |
+| `Kronos-small` (default) | 24.7M | 512 | ~3-5s per forecast |
 
-1. **CUDA GPU** — NVIDIA GPU (Windows/Linux). Fastest. Optional speedup.
-2. **Apple Silicon MPS** — M1/M2/M3/M4 Macs, uses the Apple GPU.
-3. **CPU** — any machine, including **Intel Macs** and GPU-less boxes. The
-   models are tiny (4.1M / 24.7M params), so CPU forecasts are quick.
-
-The status bar shows which device the forecast ran on (`⚡GPU`, `Apple`, or
-`CPU`).
+The models are tiny — they run on laptops, Intel Macs, cloud free tiers,
+and any machine with Python installed. No NVIDIA GPU, no CUDA, no special
+hardware needed.
 
 ## Platform guides
 
@@ -68,7 +64,7 @@ Complete, platform-specific documentation:
 | 🍎 macOS | [`docs/MACOS.md`](docs/MACOS.md) | Apple Silicon uses MPS; **Intel Macs** run on CPU (`torch==2.2.2`) |
 | 🐧 Linux | [`docs/LINUX.md`](docs/LINUX.md) | Works on CPU; optional NVIDIA-CUDA + systemd auto-start |
 
-## Quickstart (any OS — CPU works)
+## Quickstart (any OS — CPU only)
 
 ```bash
 python -m venv .venv
@@ -79,12 +75,7 @@ python server.py
 
 Then open `http://localhost:81`.
 
-> **NVIDIA GPU speedup (optional, Windows/Linux):** before the `pip install
-> -r requirements.txt` line, run
-> `pip install torch --index-url https://download.pytorch.org/whl/cu128`.
->
-> **Intel Mac:** newer torch dropped Intel macOS wheels — use
-> `pip install torch==2.2.2` first (see `docs/MACOS.md`).
+That's it — no GPU setup, no CUDA toolkit, no driver installation.
 
 ### Clone the Kronos model repo
 
