@@ -80,28 +80,8 @@
 
   <div id="toast-stack"></div>
 
-  <!-- lightweight-charts v5.2 (faster renderer, series-definition API) -->
-  <script>
-    (function loadChartLib() {
-      var urls = [
-        'https://unpkg.com/lightweight-charts@5.2.0/dist/lightweight-charts.standalone.production.js',
-        'https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.0/dist/lightweight-charts.standalone.production.js',
-      ];
-      function tryNext(i) {
-        if (i >= urls.length) {
-          document.getElementById('chart-legend').textContent =
-            'Failed to load lightweight-charts from CDN — check your internet connection.';
-          return;
-        }
-        var s = document.createElement('script');
-        s.src = urls[i];
-        s.onload = function () { window.__lwcLoaded = true; };
-        s.onerror = function () { tryNext(i + 1); };
-        document.head.appendChild(s);
-      }
-      tryNext(0);
-    })();
-  </script>
+  <!-- lightweight-charts v5.2 — bundled locally for offline / fast startup -->
+  <script src="/lightweight-charts.standalone.production.js"></script>
   <!-- ?v= cache-buster: the server sends no-store, but a hard refresh
        (Ctrl+Shift+R) or a new tab is still the reliable way to pick up
        a fresh bundle if your browser has cached an older app.js. -->

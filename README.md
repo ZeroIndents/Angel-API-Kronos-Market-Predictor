@@ -67,20 +67,21 @@ Complete, platform-specific documentation:
 ## Quickstart (any OS — CPU only)
 
 ```bash
-python -m venv .venv
-# Windows: .venv\Scripts\activate · macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
+# One-step setup (clones model repo, creates venv, installs CPU PyTorch)
+bash setup.sh
+
+# Then run
+source .venv/bin/activate
 python server.py
 ```
 
 Then open `http://localhost:81`.
 
-That's it — no GPU setup, no CUDA toolkit, no driver installation.
+That's it — no GPU setup, no CUDA toolkit, no driver installation. The chart library is bundled locally (no internet required after setup).
 
 ### Clone the Kronos model repo
 
-The server imports the Kronos codebase at runtime — clone it next to this
-folder (or set `KRONOS_REPO_DIR`):
+The `setup.sh` script does this automatically. If you prefer manual setup:
 
 ```
 git clone https://github.com/shiyu-coder/Kronos
