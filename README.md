@@ -1,10 +1,17 @@
 # 🔮 Kronos View — Live AI Chart Terminal
 
-A self-hosted **live chart terminal** built around the **Kronos** zero-shot
-financial forecasting model, focused on a single thing: watching the AI
-predict the next candles on NSE (Indian market) data in real time.
+<div align="center">
+
+![Kronos View — Hero Banner](screenshots/hero-banner.svg)
 
 **One chart. Live ticks. AI forecast overlay. Nothing else.**
+
+[![Version](https://img.shields.io/badge/version-1.1.0-blue)](https://github.com/ZeroIndents/Angel-API-Kronos-Market-Predictor/releases)
+[![Python](https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![CPU](https://img.shields.io/badge/CPU-only-22c55e)](#models--compute)
+[![License](https://img.shields.io/badge/license-view--only-red)](LICENSE)
+
+</div>
 
 > ⚠️ **Research / educational demo only — not investment advice.** See `LICENSE`.
 
@@ -22,6 +29,8 @@ from a **Tsinghua University** team (Yu Shi, Zongliang Fu, et al.):
   *separate* "Kronos" robotics model is a coincidental name overlap.)
 
 ## What it does
+
+![Quickstart](screenshots/quickstart.svg)
 
 - **🔮 Kronos AI forecast** — click the button (or hit Auto) and the model
   draws a dashed prediction path for the next 30 candles over the live chart,
@@ -100,14 +109,19 @@ python 8_smartapi_auth.py --login
 Without a login the chart still works from any cached local CSVs that were
 recorded in a previous session.
 
+## Architecture
+
+![Architecture](screenshots/architecture.svg)
+
 ## Stack
 
 - `server.py` — FastAPI: history REST, live WebSocket, Kronos forecast endpoint
-- `static/` — lightweight-charts v5.2 UI (single chart)
-- `2_kronos_inference.py` — inference core, auto device (CUDA / MPS / CPU)
+- `static/` — lightweight-charts v5.2 UI (single chart, bundled locally)
+- `2_kronos_inference.py` — inference core (CPU-only)
 - `8_smartapi_auth.py` / `9_smartapi_fetch.py` / `10_smartapi_live.py` —
   Angel One session, history, and live ticks
 - `16_market_universe.py` — NSE scrip master + symbol search
+- `setup.sh` — one-step setup (clones model, creates venv, installs deps)
 
 ## License
 
